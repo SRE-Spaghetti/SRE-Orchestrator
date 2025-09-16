@@ -256,7 +256,7 @@ This project aims to address the significant operational overhead faced by SRE t
 3.  The `GET /api/v1/incidents/{id}` endpoint is updated to include the final report.
 4.  The response body now includes the `suggested_root_cause`, the `confidence_score`, and the supporting `evidence`.
 
----
+
 ### Checklist Results Report
 
 #### Executive Summary
