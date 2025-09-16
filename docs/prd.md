@@ -302,10 +302,3 @@ No major recommendations. The PRD is in excellent shape.
 ### Final Decision
 
 ✅ **READY FOR ARCHITECT**: The PRD and epics are comprehensive, properly structured, and ready for the architectural design phase.
-
----
-### Next Steps
-
-#### Architect Prompt
-
-The Product Requirements Document for the SRE Orchestrator is now complete and located at `docs/prd.md`. Please review this document thoroughly and begin the process of creating the fullstack architecture. Pay close attention to the technical assumptions, non-functional requirements, and the epic structure as you design the system.
