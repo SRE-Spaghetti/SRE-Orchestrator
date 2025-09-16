@@ -19,7 +19,7 @@ Here is the first draft of the **`prd.md`** document for the SRE Orchestrator, s
     * Automate the initial diagnosis and data collection process.
     * Provide a unified view of correlated events, logs, and metrics.
     * Enable the system to learn from existing SRE runbooks and documentation.
-    * Ensure seamless deployment within an existing Kubernetes cluster.
+    * Ensure seamless deployment within an existing Kubernetes cluster alongside the target application.
 
 **3.0 Target Audience**
 * **Primary Users**: Site Reliability Engineers (SREs), DevOps engineers, and system administrators.
@@ -28,9 +28,9 @@ Here is the first draft of the **`prd.md`** document for the SRE Orchestrator, s
 **4.0 Features and Requirements**
 * **4.1 Core Orchestrator Functionality**:
     * **FR-1.1**: The system shall expose a REST API to accept issue reports with details such as error type (e.g., 400, 500 errors), timestamp, and a brief description.
-    * **FR-1.2**: The orchestrator shall use an LLM to interpret the user-reported issue and determine the appropriate diagnostic agents to invoke.
-    * **FR-1.3**: The orchestrator shall manage the state and context of an ongoing investigation, including a digital twin/knowledge graph of the system.
-    * **FR-1.4**: The orchestrator shall correlate information gathered from all invoked agents to generate a single, consolidated report of potential issues and supporting evidence.
+    * **FR-1.2**: The orchestrator shall use an LLM to interpret the user-reported issue in relation to the target application and determine the appropriate diagnostic agents to invoke.
+    * **FR-1.3**: The orchestrator shall manage the state and context of an ongoing investigation, including a digital twin/knowledge graph of the system that must be kept as state across incidents for a given application.
+    * **FR-1.4**: The orchestrator shall correlate information gathered from all invoked agents to generate a single, consolidated report of potential issues, supporting evidence and possibile actionable solutions.
     * **FR-1.5**: The system shall expose a REST API to provide the investigation results, including a list of possible root causes and actionable suggestions.
 
 * **4.2 Agent System**:
@@ -39,9 +39,10 @@ Here is the first draft of the **`prd.md`** document for the SRE Orchestrator, s
         * **Kubernetes Agent**: Shall interact with the Kubernetes API to collect live deployment status of pods, namespaces, persistent volumes, and other constructs.
         * **Database Agent**: Shall diagnose data-related problems by collecting metrics, logs, and query performance data from databases.
         * **Observability Agent**: Shall ingest and analyze application logs, metrics, events, and alarms from the observability stack (e.g., Prometheus, Grafana, ELK).
+        * **HELM Agent**: learne the original desired strcuture of the app prior to deployment.
 
 * **4.3 Knowledge Management**:
-    * **FR-3.1**: The system shall be able to ingest and index existing documentation (e.g., runbooks, best known methods) provided by application owners.
+    * **FR-3.1**: The system shall be able to ingest and index existing documentation (e.g., runbooks, best known methods) provided by application owners in several formats (e.g. URL, PDF, DOC).
     * **FR-3.2**: This indexed documentation shall be made available as a searchable resource for the diagnostic agents to use during an investigation.
     * **FR-3.3**: The system shall use a knowledge graph to maintain a context of the system state and the relationships between different components.
 
@@ -49,7 +50,7 @@ Here is the first draft of the **`prd.md`** document for the SRE Orchestrator, s
     * **FR-4.1**: **LLM**: The system shall use **OpenAI's GPT-5 mini** for its core intelligence.
     * **FR-4.2**: **LLM Framework**: **LangChain** shall be used for interacting with the OpenAI API and orchestrating the agents.
     * **FR-4.3**: **Knowledge Graph**: **Neo4j** shall be used for implementing the digital twin and knowledge graph.
-    * **FR-4.4**: **Deployment**: The system shall be deployed within a Kubernetes cluster using standard cloud-native technologies (Kubernetes, Helm, Docker).
+    * **FR-4.4**: **Deployment**: The system shall be built and deployed within a Kubernetes cluster using standard cloud-native technologies (Kubernetes, Helm, Docker).
 
 **5.0 Out of Scope**
 * **5.1**: Automatic remediation or resolution of issues.
