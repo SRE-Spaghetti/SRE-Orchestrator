@@ -16,9 +16,10 @@ This project aims to address the significant operational overhead faced by SRE t
 
 #### Change Log
 
-| Date       | Version | Description      | Author     |
-| :--------- | :------ | :--------------- | :--------- |
-| 2025-09-15 | 1.0     | Initial draft    | John (PM)  |
+| Date       | Version | Description              | Author     |
+|:-----------|:--------|:-------------------------| :--------- |
+| 2025-09-15 | 1.0     | Initial draft            | John (PM)  |
+| 2025-09-18 | 1.10    | Change from Go to Python | John (PM)  |
 
 ---
 
@@ -55,12 +56,13 @@ This project aims to address the significant operational overhead faced by SRE t
 *   **Testing Requirements:** **Unit + Integration Testing**
     *   **Rationale:** A comprehensive testing strategy is crucial for a reliability tool. We will require thorough unit tests for individual functions and integration tests to ensure that the orchestrator, agents, and external data sources work correctly together.
 *   **Additional Technical Assumptions and Requests:**
-    *   **Backend Language:** The primary language for development will be **Go**, leveraging its strong performance and excellent support for Kubernetes.
+    *   **Backend Language:** The primary language for development will be **Python** with **LangGraph** and **FastAPI**, leveraging its flexibility and suitability for Agentic tools and support for Kubernetes.
+    *   **Poetry** will be used for Python dependency management  
     *   **Containerization:** All components will be containerized using **Docker**.
     *   **Deployment:** All components will be deployed and managed via **Helm** charts.
     *   **Knowledge Graph (MVP):** The initial implementation will use a simple, file-based (e.g., YAML or JSON) representation of the system's topology.
     *   **LLM Integration:** The system will initially integrate with a single, cloud-based LLM (specific provider to be determined by research).
-    *   **Agent Framework:** New agents will be developed using the **Langgraph** framework to work within the **Model Context Protocol (MCP)**.
+    *   **Agent Framework:** New agents will be developed using the **LangGraph** framework to work with the **Model Context Protocol (MCP)**.
 
 ---
 
@@ -82,13 +84,13 @@ This project aims to address the significant operational overhead faced by SRE t
 #### Story 1.1: Project Scaffolding & Health Check
 
 *   **As a** DevOps Engineer,
-*   **I want** to initialize the Go project structure and create a basic HTTP server with a `/health` endpoint,
+*   **I want** to initialize the Python project structure with LangGraph at the core of the orchestrator and create a basic HTTP server with FastAPI with a `/health` endpoint,
 *   **so that** I have a runnable application to build upon and a way to verify it's running correctly.
 
 **Acceptance Criteria:**
 
-1.  A new Go project is initialized with a standard, scalable layout (e.g., `/cmd`, `/internal`, `/pkg`).
-2.  A basic HTTP server is implemented using the standard library or a lightweight framework (e.g., Gin).
+1.  A new Python project is initialized with a standard, scalable layout.
+2.  A basic HTTP server is implemented using the standard library or a lightweight framework (e.g., FastAPI).
 3.  A `GET /health` endpoint is created.
 4.  When called, the `/health` endpoint returns a `200 OK` status code and a JSON body: `{"status": "ok"}`.
 
@@ -142,12 +144,12 @@ This project aims to address the significant operational overhead faced by SRE t
 #### Story 2.1: K8s Agent Service & Cluster Connection
 
 *   **As a** Developer,
-*   **I want** to create a new Go microservice for the Kubernetes Agent and configure it to connect to the in-cluster Kubernetes API,
+*   **I want** to create a new Python microservice for the Kubernetes Agent and configure it to connect to the in-cluster Kubernetes API,
 *   **so that** it has the foundational structure and permissions to perform its diagnostic tasks.
 
 **Acceptance Criteria:**
 
-1.  A new Go application is created in the monorepo (e.g., in `/cmd/k8s-agent`).
+1.  A new Python application is created in the monorepo (e.g., in `k8s-agent`).
 2.  The agent is configured to use a Kubernetes Service Account to authenticate with the in-cluster API.
 3.  The agent's Helm chart is updated to include the necessary RBAC roles and role bindings for read-only access to pods and their logs.
 4.  Upon startup, the agent successfully initializes a Kubernetes client and can perform a basic API call (e.g., listing pods in its own namespace) to verify the connection.
@@ -293,7 +295,7 @@ The MVP scope is well-defined and appropriate. It focuses on delivering a core, 
 
 #### Technical Readiness
 
-The PRD provides clear technical constraints and guidance for the Architect. The decisions on the monorepo, microservices architecture, and the primary technology (Go) give a strong starting point. The identified areas for further research (LLMs, graph databases) are also well-noted.
+The PRD provides clear technical constraints and guidance for the Architect. The decisions on the monorepo, microservices architecture, and the primary technology (Python and LangGraph) give a strong starting point. The identified areas for further research (LLMs, graph databases) are also well-noted.
 
 #### Recommendations
 
