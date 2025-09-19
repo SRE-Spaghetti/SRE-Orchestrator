@@ -18,7 +18,7 @@ This project aims to address the significant operational overhead faced by SRE t
 
 | Date       | Version | Description              | Author     |
 |:-----------|:--------|:-------------------------| :--------- |
-| 2025-09-15 | 1.0     | Initial draft            | John (PM)  |
+| 2025-09-15 | 1.0     | Initial draft            | Sean (PM)  |
 | 2025-09-18 | 1.10    | Change from Go to Python | Sean (PM)  |
 
 ---
