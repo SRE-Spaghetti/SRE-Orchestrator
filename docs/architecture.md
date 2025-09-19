@@ -24,7 +24,7 @@ The SRE Orchestrator will be a microservices-based system designed to automate i
 
 ### High Level Overview
 
-The system will follow a **Microservices** architecture, as specified in the PRD, to promote scalability and resilience. All code will be managed in a **Monorepo** to simplify dependency management and maintain consistency across services. The primary data flow begins with an SRE triggering an investigation via a REST API call to the Orchestrator. The Orchestrator then uses an LLM to parse the request and delegates data collection tasks to the appropriate agent (initially, the Kubernetes Agent). The agent gathers data from the cluster and returns it to the Orchestrator, which then uses a correlation engine to analyze the findings and generate a root cause suggestion.
+The system will follow a Cloud Native **Microservices** architecture, as specified in the PRD, to promote scalability and resilience. All code will be managed in a **Monorepo** to simplify dependency management and maintain consistency across services. The primary data flow begins with an SRE triggering an investigation via a REST API call to the Orchestrator. The Orchestrator then uses an LLM to parse the request and delegates data collection tasks to the appropriate agent (initially, the Kubernetes Agent). The agent gathers data from the cluster and returns it to the Orchestrator, which then uses a correlation engine to analyze the findings and generate a root cause suggestion.
 
 ### High Level Project Diagram
 
