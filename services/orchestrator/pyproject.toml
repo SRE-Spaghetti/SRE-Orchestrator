@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "orchestrator"
+version = "0.1.0"
+description = "SRE Orchestrator Service"
+authors = ["BMad-Agents"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.117.1"
+uvicorn = "^0.37.0"
+pytest = "^8.4.2"
+ruff = "^0.13.1"
+black = "^25.9.0"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
+
+
+[tool.poetry.group.dev.dependencies]
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
