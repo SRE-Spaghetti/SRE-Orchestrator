@@ -11,7 +11,7 @@ class IncidentRepository:
         self._incidents[incident.id] = incident
         return incident
 
-    def get(self, incident_id: UUID) -> Optional[Incident]:
+    def get_by_id(self, incident_id: UUID) -> Optional[Incident]:
         return self._incidents.get(incident_id)
 
 # A single instance to act as our in-memory database
