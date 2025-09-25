@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from pydantic import BaseModel
+from typing import List, Optional
 
 class ContainerStatus(BaseModel):
     name: str

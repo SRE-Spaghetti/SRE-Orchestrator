@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from typing import Optional
 
 from app.models.pod_details import PodDetails
-from app.services.k8s_client import get_pod_details, initialize_kubernetes_client, get_pod_logs
+from app.services.k8s_client import get_pod_details, get_pod_logs
 
 router = APIRouter()
 

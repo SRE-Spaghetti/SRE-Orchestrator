@@ -1,7 +1,7 @@
 # Makefile for SRE-Orchestrator
 
 # Variables
-SERVICE_DIR := services/k8s-agent
+SERVICE_DIR := services/orchestrator
 IMAGE_NAME := sre-orchestrator
 TAG := latest
 PYTHON_VERSION := 3.11
