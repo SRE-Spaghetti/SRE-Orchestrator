@@ -20,8 +20,9 @@ pythonpath = [
 ]
 
 
-[tool.poetry.group.dev.dependencies]
 httpx = "^0.28.1"
+
+[tool.poetry.group.dev.dependencies]
 
 [build-system]
 requires = ["poetry-core"]
