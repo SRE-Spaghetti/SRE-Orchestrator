@@ -25,7 +25,7 @@ install:
 
 run:
 	@echo "Starting Uvicorn server..."
-        @echo "Go to localhost:8000/redoc"
+	 @echo "Go to localhost:8000/redoc"
 	@cd $(SERVICE_DIR) && poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 lint:
