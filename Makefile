@@ -12,7 +12,7 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install                Install dependencies using Poetry. Poetry must be already installed."
+	@echo "  install                Install dependencies using Poetry. Poetry >= 2.2.1 must be already installed."
 	@echo "  run                    Run the FastAPI application with Uvicorn"
 	@echo "  lint                   Lint the code with Ruff"
 	@echo "  test                   Run tests with Pytest"
