@@ -79,3 +79,21 @@ def get_pod_details(namespace: str, name: str) -> Optional[PodDetails]:
     except Exception as e:
         logger.error(f"An unexpected error occurred when getting pod details: {e}")
         return None
+
+def get_pod_logs(namespace: str, name: str, container: Optional[str] = None, tail: int = 100) -> Optional[str]:
+    if core_v1_api is None:
+        logger.error("Kubernetes client not initialized.")
+        return None
+
+    try:
+        logs = core_v1_api.read_namespaced_pod_log(name=name, namespace=namespace, container=container, tail_lines=tail)
+        return logs
+    except client.ApiException as e:
+        if e.status == 404:
+            logger.info(f"Pod {name} or container {container} not found in namespace {namespace}.")
+            return None
+        logger.error(f"Kubernetes API error when getting pod logs: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred when getting pod logs: {e}")
+        return None
