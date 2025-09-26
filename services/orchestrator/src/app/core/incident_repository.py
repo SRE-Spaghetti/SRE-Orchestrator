@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 from app.models.incidents import Incident
 from app.models.pod_details import PodDetails
 from app.services.k8s_agent_client import K8sAgentClient

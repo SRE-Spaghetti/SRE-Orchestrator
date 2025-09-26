@@ -1,7 +1,7 @@
 import yaml
 from pathlib import Path
 from typing import List
-from app.models.knowledge_graph import KnowledgeGraph, Component, Relationship
+from app.models.knowledge_graph import KnowledgeGraph, Component
 
 class KnowledgeGraphService:
     def __init__(self, knowledge_graph_path: Path):

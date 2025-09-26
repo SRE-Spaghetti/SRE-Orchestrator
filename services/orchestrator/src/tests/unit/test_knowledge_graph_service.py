@@ -1,7 +1,6 @@
 import pytest
-from pathlib import Path
 from app.services.knowledge_graph_service import KnowledgeGraphService
-from app.models.knowledge_graph import KnowledgeGraph, Component, Relationship
+from app.models.knowledge_graph import KnowledgeGraph
 
 # Create a temporary knowledge_graph.yaml for testing
 @pytest.fixture
