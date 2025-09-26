@@ -1,14 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+
 class ContainerStatus(BaseModel):
     name: str
     state: str
     ready: bool
 
+
 class ResourceRequirements(BaseModel):
     cpu: Optional[str] = None
     memory: Optional[str] = None
+
 
 class PodDetails(BaseModel):
     status: str

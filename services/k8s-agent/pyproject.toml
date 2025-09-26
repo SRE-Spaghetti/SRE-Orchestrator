@@ -17,6 +17,7 @@ dependencies = [
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.13.1"
+black = "^24.4.2"
 
 [tool.poetry]
 packages = [{include = "app"}]

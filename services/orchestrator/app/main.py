@@ -5,6 +5,7 @@ app = FastAPI()
 
 app.include_router(incidents.router, prefix="/api/v1")
 
+
 @app.get("/health")
 def read_health():
     """

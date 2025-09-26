@@ -5,6 +5,7 @@ from app.models.pod_details import PodDetails
 from app.services.k8s_agent_client import K8sAgentClient
 import re
 
+
 class IncidentRepository:
     def __init__(self):
         self._incidents: Dict[UUID, Incident] = {}
@@ -17,10 +18,14 @@ class IncidentRepository:
         namespace_match = re.search(r"namespace:(\S+)", description)
 
         pod_name = pod_name_match.group(1) if pod_name_match else None
-        namespace = namespace_match.group(1) if namespace_match else "default" # Default to 'default' namespace
+        namespace = (
+            namespace_match.group(1) if namespace_match else "default"
+        )  # Default to 'default' namespace
 
         if pod_name:
-            pod_details: Optional[PodDetails] = k8s_agent_client.get_pod_details(namespace, pod_name)
+            pod_details: Optional[PodDetails] = k8s_agent_client.get_pod_details(
+                namespace, pod_name
+            )
             if pod_details:
                 incident.evidence["pod_details"] = pod_details.model_dump()
 
@@ -34,8 +39,10 @@ class IncidentRepository:
     def get_by_id(self, incident_id: UUID) -> Optional[Incident]:
         return self._incidents.get(incident_id)
 
+
 # A single instance to act as our in-memory database
 incident_repository = IncidentRepository()
+
 
 def get_incident_repository() -> IncidentRepository:
     return incident_repository

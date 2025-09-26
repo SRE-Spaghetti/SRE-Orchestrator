@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.models.pod_details import PodDetails
 
+
 class K8sAgentClient:
     def __init__(self, base_url: str):
         self.base_url = base_url
@@ -22,7 +23,13 @@ class K8sAgentClient:
         except httpx.RequestError:
             raise
 
-    def get_pod_logs(self, namespace: str, name: str, container: Optional[str] = None, tail: int = 100) -> Optional[str]:
+    def get_pod_logs(
+        self,
+        namespace: str,
+        name: str,
+        container: Optional[str] = None,
+        tail: int = 100,
+    ) -> Optional[str]:
         url = f"{self.base_url}/api/v1/pods/{namespace}/{name}/logs"
         params = {}
         if container:
@@ -41,11 +48,15 @@ class K8sAgentClient:
         except httpx.RequestError:
             raise
 
+
 k8s_agent_client_instance: Optional[K8sAgentClient] = None
+
 
 def get_k8s_agent_client() -> K8sAgentClient:
     global k8s_agent_client_instance
     if k8s_agent_client_instance is None:
-        k8s_agent_base_url = os.getenv("K8S_AGENT_BASE_URL", "http://localhost:8001") # Default for local testing
+        k8s_agent_base_url = os.getenv(
+            "K8S_AGENT_BASE_URL", "http://localhost:8001"
+        )  # Default for local testing
         k8s_agent_client_instance = K8sAgentClient(k8s_agent_base_url)
     return k8s_agent_client_instance
