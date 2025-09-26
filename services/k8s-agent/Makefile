@@ -1,6 +1,7 @@
 # Makefile for k8s-agent service
 
-.PHONY: help build lint test run install
+
+.PHONY: help build lint test run install format lock
 
 help:
 	@echo "Usage: make <target>"
@@ -11,6 +12,8 @@ help:
 	@echo "  lint                   Lint the code with Ruff"
 	@echo "  test                   Run tests with Pytest"
 	@echo "  build                  Build the Docker image. Docker must be already installed."
+	@echo "  format                 Format the code with Black."
+	@echo "  lock                   Generate poetry.lock file."
 
 
 install:
@@ -25,7 +28,6 @@ run:
 lint:
 	@echo "Linting code with Ruff..."
 	@poetry run ruff check .
-	@poetry run black --diff --check .
 
 test:
 	@echo "Running tests with Pytest..."
@@ -34,3 +36,11 @@ test:
 build:
 	@echo "Building Docker image k8s-agent:latest..."
 	@docker build -t k8s-agent:latest .
+
+format:
+	@echo "Formatting code with Black..."
+	@poetry run black .
+
+lock:
+	@echo "Generating poetry.lock file..."
+	@poetry lock

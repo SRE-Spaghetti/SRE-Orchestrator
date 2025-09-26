@@ -2,7 +2,7 @@
 
 SERVICES := services/orchestrator services/k8s-agent
 
-.PHONY: help build lint test run install
+.PHONY: help build lint test run install format lock
 
 help:
 	@echo "Usage: make <target>"
@@ -12,13 +12,15 @@ help:
 	@echo "  lint                   Lint all services"
 	@echo "  test                   Test all services"
 	@echo "  build                  Build all services"
+	@echo "  format                 Format all services"
+	@echo "  lock                   Generate poetry.lock for all services"
 	@echo ""
 	@echo "To run a command on a specific service:"
 	@echo "  make -C <service_directory> <target>"
 	@echo "  e.g.: make -C services/orchestrator run"
 
 
-install lint test build:
+install lint test build format lock:
 	@for service in $(SERVICES); do \
 		echo "Running '$@' for $$service..."; \
 		$(MAKE) -C $$service $@; \

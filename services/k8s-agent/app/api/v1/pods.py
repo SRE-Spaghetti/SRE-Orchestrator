@@ -15,14 +15,14 @@ async def read_pod(namespace: str, name: str):
         raise HTTPException(status_code=404, detail="Pod not found")
     return pod_details
 
+
 @router.get("/pods/{namespace}/{name}/logs", response_class=PlainTextResponse)
 async def read_pod_logs(
-    namespace: str,
-    name: str,
-    container: Optional[str] = None,
-    tail: int = 100
+    namespace: str, name: str, container: Optional[str] = None, tail: int = 100
 ):
     logs = get_pod_logs(namespace, name, container, tail)
     if logs is None:
-        raise HTTPException(status_code=404, detail="Pod logs not found or pod/container does not exist")
+        raise HTTPException(
+            status_code=404, detail="Pod logs not found or pod/container does not exist"
+        )
     return logs
