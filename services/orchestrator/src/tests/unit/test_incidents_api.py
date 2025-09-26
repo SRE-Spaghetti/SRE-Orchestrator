@@ -23,9 +23,11 @@ def test_create_incident_success():
     }
 
     with (
+        patch("app.services.llm_client.LLMClient.__init__", return_value=None),
+        patch("app.services.llm_client.LLMClient.extract_entities", return_value=mock_extracted_entities) as mock_extract_entities,
+        patch("app.services.llm_client.get_llm_client", return_value=MagicMock(extract_entities=MagicMock(return_value=mock_extracted_entities))),
         patch("app.services.k8s_agent_client.K8sAgentClient.get_pod_details", return_value=mock_pod_details) as mock_get_pod_details,
         patch("app.services.k8s_agent_client.K8sAgentClient.get_pod_logs", return_value="mock logs") as mock_get_pod_logs,
-        patch("app.services.llm_client.LLMClient.extract_entities", return_value=mock_extracted_entities) as mock_extract_entities,
     ):
 
         response = client.post("/api/v1/incidents", json={"description": "Test incident pod:test-pod namespace:test-namespace"})
@@ -57,9 +59,11 @@ def test_get_incident_success():
     }
 
     with (
+        patch("app.services.llm_client.LLMClient.__init__", return_value=None),
+        patch("app.services.llm_client.LLMClient.extract_entities", return_value=mock_extracted_entities) as mock_extract_entities,
+        patch("app.services.llm_client.get_llm_client", return_value=MagicMock(extract_entities=MagicMock(return_value=mock_extracted_entities))),
         patch("app.services.k8s_agent_client.K8sAgentClient.get_pod_details", return_value=mock_pod_details) as mock_get_pod_details,
         patch("app.services.k8s_agent_client.K8sAgentClient.get_pod_logs", return_value="mock logs") as mock_get_pod_logs,
-        patch("app.services.llm_client.LLMClient.extract_entities", return_value=mock_extracted_entities) as mock_extract_entities,
     ):
 
         # First, create an incident
