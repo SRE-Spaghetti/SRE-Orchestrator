@@ -1,10 +1,6 @@
 # Makefile for SRE-Orchestrator
 
-# Variables
-SERVICE_DIR := services/orchestrator
-IMAGE_NAME := sre-orchestrator
-TAG := latest
-PYTHON_VERSION := 3.11
+SERVICES := services/orchestrator services/k8s-agent
 
 .PHONY: help build lint test run install
 
@@ -12,31 +8,24 @@ help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install                Install dependencies using Poetry. Poetry >= 2.2.1 must be already installed."
-	@echo "  run                    Run the FastAPI application with Uvicorn"
-	@echo "  lint                   Lint the code with Ruff"
-	@echo "  test                   Run tests with Pytest"
-	@echo "  build                  Build the Docker image. Docker must be already installed."
+	@echo "  install                Install dependencies for all services"
+	@echo "  lint                   Lint all services"
+	@echo "  test                   Test all services"
+	@echo "  build                  Build all services"
+	@echo ""
+	@echo "To run a command on a specific service:"
+	@echo "  make -C <service_directory> <target>"
+	@echo "  e.g.: make -C services/orchestrator run"
 
 
-install:
-	@echo "Installing dependencies from poetry.lock..."
-	@cd $(SERVICE_DIR) && poetry install
+install lint test build:
+	@for service in $(SERVICES); do \
+		echo "Running '$@' for $$service..."; \
+		$(MAKE) -C $$service $@; \
+	done
 
 run:
-	@echo "Starting Uvicorn server..."
-	@echo "Go to localhost:8000/redoc"
-	@cd $(SERVICE_DIR) && poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-lint:
-	@echo "Linting code with Ruff..."
-	@cd $(SERVICE_DIR) && poetry run ruff check .
-
-test:
-	@echo "Running tests with Pytest..."
-	@cd $(SERVICE_DIR) && poetry run pytest
-
-build:
-	@echo "Building Docker image $(IMAGE_NAME):$(TAG)..."
-	@docker build -t $(IMAGE_NAME):$(TAG) $(SERVICE_DIR)
-
+	@echo "Running multiple services from the root Makefile is not supported."
+	@echo "Please run each service in a separate terminal:"
+	@echo "  make -C services/orchestrator run"
+	@echo "  make -C services/k8s-agent run"
