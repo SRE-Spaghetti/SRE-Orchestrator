@@ -9,6 +9,7 @@ serviceAccount:
   create: true
   annotations: {}
   name: ""
+  automount: true
 
 orchestrator:
   replicaCount: 1
@@ -29,6 +30,32 @@ orchestrator:
   #  requests:
   #   cpu: 100m
   #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+k8sAgent:
+  replicaCount: 1
+
+  image:
+    repository: sre-orchestrator/k8s-agent
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  resources:
+   limits:
+    cpu: 100m
+    memory: 128Mi
+   requests:
+    cpu: 100m
+    memory: 128Mi
 
   nodeSelector: {}
 

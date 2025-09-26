@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sre-orchestrator.serviceAccountName" . }}-k8s-agent
+  labels:
+    {{- include "sre-orchestrator.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "sre-orchestrator.fullname" . }}-k8s-agent-reader
+  labels:
+    {{- include "sre-orchestrator.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "sre-orchestrator.fullname" . }}-k8s-agent-reader-binding
+  labels:
+    {{- include "sre-orchestrator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "sre-orchestrator.fullname" . }}-k8s-agent-reader
+subjects:
+- kind: ServiceAccount
+  name: {{ include "sre-orchestrator.serviceAccountName" . }}-k8s-agent
+  namespace: {{ .Release.Namespace }}
