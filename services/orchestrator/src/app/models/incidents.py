@@ -18,3 +18,4 @@ class Incident(BaseModel):
     status: str = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     evidence: Dict[str, Any] = Field(default_factory=dict)
+    extracted_entities: Dict[str, Any] = Field(default_factory=dict)
