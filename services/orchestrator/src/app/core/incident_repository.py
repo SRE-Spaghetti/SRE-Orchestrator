@@ -1,5 +1,6 @@
 from uuid import UUID
 from typing import Dict, Optional
+from datetime import datetime
 from ..models.incidents import Incident
 from ..models.pod_details import PodDetails
 from ..services.k8s_agent_client import K8sAgentClient
@@ -58,6 +59,9 @@ class IncidentRepository:
         )
         incident.suggested_root_cause = suggested_root_cause
         incident.confidence_score = confidence_score
+
+        incident.status = "completed"
+        incident.completed_at = datetime.utcnow()
 
         self._incidents[incident.id] = incident
         return incident

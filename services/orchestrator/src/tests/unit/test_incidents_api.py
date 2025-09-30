@@ -131,7 +131,8 @@ def test_get_incident_success():
             incident_data["description"]
             == "Test incident for GET pod:test-pod namespace:test-namespace"
         )
-        assert incident_data["status"] == "pending"
+        assert incident_data["status"] == "completed"
+        assert incident_data["completed_at"] is not None
         assert incident_data["evidence"] == {
             "pod_details": mock_pod_details.model_dump(),
             "pod_logs": "mock logs",
