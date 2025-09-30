@@ -1,17 +1,27 @@
 from uuid import UUID
 from typing import Dict, Optional
-from app.models.incidents import Incident
-from app.models.pod_details import PodDetails
-from app.services.k8s_agent_client import K8sAgentClient
-from app.services.llm_client import LLMClient
+from ..models.incidents import Incident
+from ..models.pod_details import PodDetails
+from ..services.k8s_agent_client import K8sAgentClient
+from ..services.llm_client import LLMClient
 import re
+
+
+from ..services.knowledge_graph_service import KnowledgeGraphService
+from ..core.correlation_engine import CorrelationEngine
 
 
 class IncidentRepository:
     def __init__(self):
         self._incidents: Dict[UUID, Incident] = {}
 
-    def create(self, description: str, k8s_agent_client: K8sAgentClient, llm_client: LLMClient) -> Incident:
+    def create(
+        self,
+        description: str,
+        k8s_agent_client: K8sAgentClient,
+        llm_client: LLMClient,
+        knowledge_graph_service: KnowledgeGraphService,
+    ) -> Incident:
         incident = Incident(description=description)
 
         # LLM Integration: Extract entities
@@ -40,6 +50,14 @@ class IncidentRepository:
             pod_logs: Optional[str] = k8s_agent_client.get_pod_logs(namespace, pod_name)
             if pod_logs:
                 incident.evidence["pod_logs"] = pod_logs
+
+        # Correlation Engine
+        correlation_engine = CorrelationEngine(knowledge_graph_service)
+        suggested_root_cause, confidence_score = correlation_engine.correlate(
+            incident.evidence
+        )
+        incident.suggested_root_cause = suggested_root_cause
+        incident.confidence_score = confidence_score
 
         self._incidents[incident.id] = incident
         return incident

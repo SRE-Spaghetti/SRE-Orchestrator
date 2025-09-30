@@ -1,7 +1,8 @@
 import yaml
 from pathlib import Path
 from typing import List
-from app.models.knowledge_graph import KnowledgeGraph, Component
+from ..models.knowledge_graph import KnowledgeGraph, Component
+
 
 class KnowledgeGraphService:
     def __init__(self, knowledge_graph_path: Path):
@@ -9,7 +10,7 @@ class KnowledgeGraphService:
         self._graph: KnowledgeGraph = self._load_graph()
 
     def _load_graph(self) -> KnowledgeGraph:
-        with open(self.knowledge_graph_path, 'r') as f:
+        with open(self.knowledge_graph_path, "r") as f:
             data = yaml.safe_load(f)
         return KnowledgeGraph(**data)
 

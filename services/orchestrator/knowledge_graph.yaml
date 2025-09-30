@@ -1,0 +1,11 @@
+components:
+  - name: orchestrator-service
+    type: service
+    relationships:
+      - depends_on: k8s-agent
+  - name: k8s-agent
+    type: service
+  - name: database
+    type: datastore
+    relationships:
+      - depends_on: orchestrator-service
