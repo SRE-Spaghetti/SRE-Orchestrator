@@ -36,6 +36,7 @@ test:
 docker-build:
 	@echo "Building Docker image k8s-agent:latest..."
 	@docker build -t k8s-agent:latest .
+	@trivy image k8s-agent:latest --severity HIGH,CRITICAL
 
 format:
 	@echo "Formatting code with Black..."
