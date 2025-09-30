@@ -1,5 +1,5 @@
 
-.PHONY: help build lint test run install format lock
+.PHONY: help docker-build lint test run install format lock
 
 help:
 	@echo "Usage: make <target>"
@@ -9,7 +9,7 @@ help:
 	@echo "  run                    Run the FastAPI application with Uvicorn"
 	@echo "  lint                   Lint the code with Ruff"
 	@echo "  test                   Run tests with Pytest"
-	@echo "  build                  Build the Docker image. Docker must be already installed."
+	@echo "  docker-build           Build the Docker image. Docker must be already installed."
 	@echo "  format                 Format the code with Black."
 	@echo "  lock                   Generate poetry.lock file."
 
@@ -31,7 +31,7 @@ test:
 	@echo "Running tests with Pytest..."
 	@poetry run pytest
 
-build:
+docker-build:
 	@echo "Building Docker image sre-orchestrator:latest..."
 	@docker build -t sre-orchestrator:latest .
 

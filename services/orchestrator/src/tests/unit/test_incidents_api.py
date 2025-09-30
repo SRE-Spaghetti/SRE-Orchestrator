@@ -10,10 +10,14 @@ client = TestClient(app)
 
 # Create a mock knowledge graph service for testing
 # In a real-world scenario, you might want to use a fixture to create a temporary file
-knowledge_graph_path = Path(__file__).parent.parent.parent.parent / "knowledge_graph.yaml"
+knowledge_graph_path = (
+    Path(__file__).parent.parent.parent.parent / "knowledge_graph.yaml"
+)
 if not knowledge_graph_path.exists():
     knowledge_graph_path.touch()
-app.state.knowledge_graph_service = KnowledgeGraphService(knowledge_graph_path=knowledge_graph_path)
+app.state.knowledge_graph_service = KnowledgeGraphService(
+    knowledge_graph_path=knowledge_graph_path
+)
 
 
 def test_create_incident_success():
