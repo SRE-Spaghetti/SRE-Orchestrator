@@ -2,6 +2,7 @@ import pytest
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.models.knowledge_graph import KnowledgeGraph
 
+
 # Create a temporary knowledge_graph.yaml for testing
 @pytest.fixture
 def temp_knowledge_graph_file(tmp_path):
@@ -22,9 +23,11 @@ components:
     file_path.write_text(content)
     return file_path
 
+
 @pytest.fixture
 def knowledge_graph_service(temp_knowledge_graph_file):
     return KnowledgeGraphService(knowledge_graph_path=temp_knowledge_graph_file)
+
 
 def test_load_graph_success(knowledge_graph_service):
     assert isinstance(knowledge_graph_service._graph, KnowledgeGraph)
@@ -50,6 +53,7 @@ def test_load_graph_success(knowledge_graph_service):
     assert len(database.relationships) == 1
     assert database.relationships[0].depends_on == "orchestrator-service"
 
+
 def test_get_dependencies(knowledge_graph_service):
     deps = knowledge_graph_service.get_dependencies("orchestrator-service")
     assert deps == ["k8s-agent"]
@@ -62,6 +66,7 @@ def test_get_dependencies(knowledge_graph_service):
 
     deps = knowledge_graph_service.get_dependencies("non-existent-component")
     assert deps == []
+
 
 def test_get_component(knowledge_graph_service):
     component = knowledge_graph_service.get_component("orchestrator-service")

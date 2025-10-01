@@ -17,5 +17,8 @@ class Incident(BaseModel):
     description: str
     status: str = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: datetime | None = None
     evidence: Dict[str, Any] = Field(default_factory=dict)
     extracted_entities: Dict[str, Any] = Field(default_factory=dict)
+    suggested_root_cause: str | None = None
+    confidence_score: str | None = None

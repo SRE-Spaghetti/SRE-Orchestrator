@@ -2,7 +2,7 @@ import httpx
 import os
 from typing import Optional
 
-from app.models.pod_details import PodDetails
+from ..models.pod_details import PodDetails
 
 
 class K8sAgentClient:

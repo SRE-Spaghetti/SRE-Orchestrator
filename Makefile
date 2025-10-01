@@ -2,7 +2,8 @@
 
 SERVICES := services/orchestrator services/k8s-agent
 
-.PHONY: help build lint test run install format lock
+.PHONY: help docker-build lint test run install format lock security
+.SHELLFLAGS := -ec
 
 help:
 	@echo "Usage: make <target>"
@@ -11,16 +12,17 @@ help:
 	@echo "  install                Install dependencies for all services"
 	@echo "  lint                   Lint all services"
 	@echo "  test                   Test all services"
-	@echo "  build                  Build all services"
+	@echo "  docker-build           Build all services"
 	@echo "  format                 Format all services"
 	@echo "  lock                   Generate poetry.lock for all services"
+	@echo "  security               Run trivy filesystem scan"
 	@echo ""
 	@echo "To run a command on a specific service:"
 	@echo "  make -C <service_directory> <target>"
 	@echo "  e.g.: make -C services/orchestrator run"
 
 
-install lint test build format lock:
+install lint test docker-build format lock:
 	@for service in $(SERVICES); do \
 		echo "Running '$@' for $$service..."; \
 		$(MAKE) -C $$service $@; \
@@ -31,3 +33,7 @@ run:
 	@echo "Please run each service in a separate terminal:"
 	@echo "  make -C services/orchestrator run"
 	@echo "  make -C services/k8s-agent run"
+
+security:
+	@echo "Running trivy filesystem scan..."
+	trivy fs .
