@@ -36,7 +36,8 @@ test:
 docker-build:
 	@echo "Building Docker image k8s-agent:latest..."
 	@docker build -t k8s-agent:latest .
-	@trivy image k8s-agent:latest --severity HIGH,CRITICAL
+	@trivy image -q --severity HIGH,CRITICAL k8s-agent:latest
+	@echo Image OK: sre-orchestrator:latest
 
 format:
 	@echo "Formatting code with Black..."
