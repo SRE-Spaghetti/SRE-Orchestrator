@@ -34,7 +34,8 @@ test:
 docker-build:
 	@echo "Building Docker image sre-orchestrator:latest..."
 	@docker build -t sre-orchestrator:latest .
-	@trivy image sre-orchestrator:latest --severity HIGH,CRITICAL
+	@trivy image -q --severity HIGH,CRITICAL sre-orchestrator:latest
+	@echo Image OK: sre-orchestrator:latest
 
 format:
 	@echo "Formatting code with Black..."

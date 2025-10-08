@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "sre-orch"
 
 serviceAccount:
   create: true
@@ -41,7 +41,7 @@ k8sAgent:
   replicaCount: 1
 
   image:
-    repository: sre-orchestrator/k8s-agent
+    repository: k8s-agent
     pullPolicy: IfNotPresent
     tag: "latest"
 
