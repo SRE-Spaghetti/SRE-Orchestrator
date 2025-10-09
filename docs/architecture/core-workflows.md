@@ -69,11 +69,11 @@ The workflow progresses sequentially through these stages. The system is designe
 
 ```mermaid
 graph TD
-    A[Start (Incident Ingested)] --> B(Incident Parsing)
+    A[Start 'Incident Ingested'] --> B(Incident Parsing)
     B --> C(Data Collection)
     C --> D(Root Cause Correlation)
     D --> E(Action Plan Suggestion)
     E --> F{Human Review and Feedback}
     F -- Human Input Received --> G(Finalization)
-    G --> H[End (Incident Completed)]
+    G --> H[End 'Incident Completed']
 ```
