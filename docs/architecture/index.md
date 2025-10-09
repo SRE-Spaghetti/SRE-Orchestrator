@@ -12,7 +12,6 @@ This document has been sharded into multiple files.
 - [Components](./components.md)
 - [External APIs](./external-apis.md)
 - [Core Workflows](./core-workflows.md)
-- [LangGraph SRE Agent Workflow](./langgraph-sre-agent-workflow.md)
 - [REST API Spec](./rest-api-spec.md)
 - [Database Schema](./database-schema.md)
 - [Source Tree](./source-tree.md)

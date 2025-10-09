@@ -432,3 +432,120 @@ app.update_state(config, {"incident": {"status": "approved"}})
 
 This implementation directly mirrors the diagram. The code defines the nodes and edges, and the stream and 
 update_state methods are how you manage the pause-and-resume cycle for human feedback.
+
+
+## Question 5
+
+> OK I'm trying to design a langgraph graph structure for a SRE incident triage workflow. Please read  the existing
+architecture in @docs/architecture.md and understand that we're connecting to a K8s agent and we have a knowledge
+graph that can give some context. We'll feed in incidents through a  REST endpoint and we want the system to triage
+the incident and find the root cause using the correlation engine that we have developed. The goal is to find a root
+cause and suggest an action plan. The human in the loop should be allowed to add a comment after the analysis so that
+their input can be included in the end result. Can you help me with it? I already have an Incident defintion in
+@services/orchestrator/src/app/models/incidents.py - please reuse this
+
+✦ Hello, I'm Winston, your Architect. I've reviewed the existing architecture document and the Incident definition. I
+understand the requirements for designing a LangGraph structure for the SRE incident triage workflow, incorporating
+the Kubernetes agent, knowledge graph, correlation engine, and human-in-the-loop feedback.
+
+Here's a proposed LangGraph structure for the SRE Incident Triage Workflow:
+
+LangGraph State Definition
+
+The graph will maintain a state that evolves as the incident progresses through the workflow. This state will be
+based on the Incident model and extended with additional fields relevant to the graph's execution.
+
+    1 from typing import TypedDict, List, Dict, Any
+    2 from services.orchestrator.src.app.models.incidents import Incident
+    3 
+    4 class IncidentState(TypedDict):
+    5     incident: Incident
+    6     # Additional fields for graph execution
+    7     llm_extracted_entities: Dict[str, Any] | None
+    8     k8s_evidence: Dict[str, Any] | None
+    9     correlation_results: Dict[str, Any] | None
+10     action_plan: str | None
+11     human_comment: str | None
+12     current_step: str # To track where the graph is for debugging/logging
+
+LangGraph Nodes and Their Responsibilities
+
+Each node will represent a distinct step in the incident triage process.
+
+1. `parse_incident_node`:
+    * Input: IncidentState (specifically incident.description)
+    * Action: Calls the Cloud LLM API to extract structured entities (e.g., pod name, namespace, error type) from
+      the incident.description.
+    * Output: Updates llm_extracted_entities in IncidentState.
+    * Next: collect_k8s_data_node
+
+2. `collect_k8s_data_node`:
+    * Input: IncidentState (specifically llm_extracted_entities)
+    * Action: Calls the Kubernetes Agent API to retrieve relevant pod details and logs based on the extracted
+      entities.
+    * Output: Updates k8s_evidence in IncidentState.
+    * Next: correlate_data_node
+
+3. `correlate_data_node`:
+    * Input: IncidentState (specifically k8s_evidence and potentially llm_extracted_entities)
+    * Action: Uses the internal correlation engine and the knowledge_graph.yaml to analyze the collected evidence
+      and suggest a root cause.
+    * Output: Updates incident.suggested_root_cause and incident.confidence_score, and correlation_results in
+      IncidentState.
+    * Next: suggest_action_plan_node
+
+4. `suggest_action_plan_node`:
+    * Input: IncidentState (specifically incident.suggested_root_cause and correlation_results)
+    * Action: Generates a preliminary action plan based on the identified root cause. This might involve another
+      LLM call or a rule-based system.
+    * Output: Updates action_plan in IncidentState.
+    * Next: human_review_node
+
+5. `human_review_node`:
+    * Input: IncidentState (all current data)
+    * Action: This node will pause the graph execution and wait for human input (a comment). This would typically
+      involve exposing the current IncidentState via an API endpoint and waiting for a PATCH or PUT request to
+      update the human_comment field.
+    * Output: Updates human_comment in IncidentState.
+    * Next: finalize_incident_node
+
+6. `finalize_incident_node`:
+    * Input: IncidentState (all data, including human_comment)
+    * Action: Updates the incident.status to "completed", sets incident.completed_at, and persists the final
+      Incident object (e.g., to the in-memory store for MVP). This node could also trigger notifications.
+    * Output: Final IncidentState.
+    * Next: END
+
+LangGraph Edges and Control Flow
+
+The edges define the transitions between nodes.
+
+* Entry Point: The graph starts when a new incident is received via the POST /api/v1/incidents endpoint, which
+  initializes the IncidentState and triggers the parse_incident_node.
+
+```mermaid
+
+ graph TD
+     A[Start 'Incident Ingested'] --> B(Parse Incident Node)
+     B --> C(Collect K8s Data Node)
+     C --> D(Correlate Data Node)
+     D --> E(Suggest Action Plan Node)
+     E --> F{Human Review Node}
+     F -- Human Input Received --> G(Finalize Incident Node)
+     G --> H[End 'Incident Completed']
+```
+
+Integration with FastAPI
+
+The FastAPI application will:
+1. Receive POST /api/v1/incidents requests.
+2. Create an initial Incident object and IncidentState.
+3. Start the LangGraph execution with the initial IncidentState.
+4. For the human_review_node, the graph will enter a waiting state. The FastAPI application will need an endpoint
+   (e.g., PATCH /api/v1/incidents/{id}/review) to receive the human comment and resume the graph execution.
+5. The GET /api/v1/incidents/{id} endpoint will retrieve the current state of the Incident object, including any
+   in-progress results or the final report.
+
+This structure provides a clear, modular, and extensible workflow for incident triage.
+
+Do you have any initial thoughts or areas you'd like to refine?
