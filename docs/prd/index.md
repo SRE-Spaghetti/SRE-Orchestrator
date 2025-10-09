@@ -11,4 +11,5 @@ This document has been sharded into multiple files.
 - [Epic 1: Foundational Orchestrator & API](./epic-1-foundational-orchestrator-api.md)
 - [Epic 2: Kubernetes Data Collection Agent](./epic-2-kubernetes-data-collection-agent.md)
 - [Epic 3: Intelligent Triage and Root Cause Suggestion](./epic-3-intelligent-triage-and-root-cause-suggestion.md)
+- [Epic 4: MCP Server Integration - Functional Requirements](./epic-4-functional-requirements.md)
 - [Checklist Results Report](./checklist-results-report.md)
