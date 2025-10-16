@@ -1,0 +1,14 @@
+# Configuration for external MCP (Mission Critical Platform) servers.
+mcp_servers:
+  # Example of a primary MCP server using HTTPS and authentication.
+  - server_url: "https://mcp.example.com/api"
+    # Transport type can be 'http' or 'https'.
+    transport_type: "https"
+    # Optional authentication credentials.
+    authentication:
+      username: "admin"
+      password: "secure_password_placeholder"
+
+  # Example of a secondary MCP server using HTTP without authentication.
+  - server_url: "http://mcp-secondary.internal:8080"
+    transport_type: "http"

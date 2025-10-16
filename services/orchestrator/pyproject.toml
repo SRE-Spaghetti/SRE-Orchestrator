@@ -15,6 +15,7 @@ ruff = "^0.13.1"
 black = "^25.9.0"
 google-generativeai = "^0.8.5"
 pyyaml = "^6.0.1"
+httpx = "^0.28.1"
 
 [tool.pytest.ini_options]
 pythonpath = [
@@ -22,8 +23,6 @@ pythonpath = [
 ]
 
 
-httpx = "^0.28.1"
-google-generativeai = "^0.7.0"
 
 [tool.poetry.group.dev.dependencies]
 
