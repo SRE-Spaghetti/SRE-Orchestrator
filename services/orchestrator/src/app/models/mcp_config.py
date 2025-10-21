@@ -1,17 +1,23 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from pydantic import BaseModel, SecretStr
+from typing import List, Optional
+from enum import Enum
+
+
+class TransportType(str, Enum):
+    HTTP = "http"
+    HTTPS = "https"
+
 
 class MCPAuthentication(BaseModel):
-    """Authentication details for an MCP server."""
     username: str
-    password: str
+    password: SecretStr
 
-class MCPServer(BaseModel):
-    """Configuration for a single MCP server."""
+
+class MCPServerConfig(BaseModel):
     server_url: str
-    transport_type: Literal["http", "https"]
+    transport_type: TransportType
     authentication: Optional[MCPAuthentication] = None
 
+
 class MCPConfig(BaseModel):
-    """Root model for the MCP configuration file."""
-    mcp_servers: List[MCPServer] = Field(default_factory=list)
+    mcp_servers: List[MCPServerConfig]

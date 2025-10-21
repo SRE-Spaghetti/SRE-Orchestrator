@@ -32,7 +32,7 @@ def test_load_valid_config(mock_path):
     with patch("builtins.open", mock_open(read_data=VALID_YAML)) as mock_file:
         with patch("pathlib.Path.is_file", return_value=True):
             service = MCPConfigService(mock_path)
-            config = service.get_config()
+            config = service.load_config()
             assert config is not None
             assert len(config.mcp_servers) == 1
             assert config.mcp_servers[0].server_url == "https://test.com"
@@ -41,14 +41,15 @@ def test_load_valid_config(mock_path):
 def test_missing_config_file(mock_path):
     with patch("pathlib.Path.is_file", return_value=False):
         service = MCPConfigService(mock_path)
-        config = service.get_config()
-        assert config is None
+        config = service.load_config()
+        assert config is not None
+        assert len(config.mcp_servers) == 0
 
 def test_empty_config_file(mock_path):
     with patch("builtins.open", mock_open(read_data="")) as mock_file:
         with patch("pathlib.Path.is_file", return_value=True):
             service = MCPConfigService(mock_path)
-            config = service.get_config()
+            config = service.load_config()
             assert config is not None
             assert len(config.mcp_servers) == 0
 
@@ -56,17 +57,19 @@ def test_invalid_schema(mock_path):
     with patch("builtins.open", mock_open(read_data=INVALID_SCHEMA_YAML)):
         with patch("pathlib.Path.is_file", return_value=True):
             with pytest.raises(ValueError, match="Error loading or validating MCP config"):
-                MCPConfigService(mock_path)
+                service = MCPConfigService(mock_path)
+                service.load_config()
 
 def test_malformed_yaml(mock_path):
     with patch("builtins.open", mock_open(read_data=MALFORMED_YAML)):
         with patch("pathlib.Path.is_file", return_value=True):
             with pytest.raises(ValueError, match="Error loading or validating MCP config"):
-                MCPConfigService(mock_path)
+                service = MCPConfigService(mock_path)
+                service.load_config()
 
 def test_io_error(mock_path):
     with patch("builtins.open", side_effect=IOError("File not readable")):
         with patch("pathlib.Path.is_file", return_value=True):
             with pytest.raises(IOError, match="Could not read MCP config file"):
-                MCPConfigService(mock_path)
-
+                service = MCPConfigService(mock_path)
+                service.load_config()
