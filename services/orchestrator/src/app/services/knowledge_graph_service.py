@@ -15,9 +15,13 @@ class KnowledgeGraphService:
         with open(self.knowledge_graph_path, "r") as f:
             data = yaml.safe_load(f)
             if data is None:
-                raise ValueError(f"Knowledge graph file is empty: {self.knowledge_graph_path}")
+                raise ValueError(
+                    f"Knowledge graph file is empty: {self.knowledge_graph_path}"
+                )
             if not isinstance(data, dict):
-                raise TypeError(f"Knowledge graph file content is not a valid mapping (dictionary): {self.knowledge_graph_path}")
+                raise TypeError(
+                    f"Knowledge graph file content is not a valid mapping (dictionary): {self.knowledge_graph_path}"
+                )
 
         graph = KnowledgeGraph(**data)
         component_map = {component.name: component for component in graph.components}

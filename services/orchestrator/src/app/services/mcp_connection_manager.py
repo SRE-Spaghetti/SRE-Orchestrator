@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 from typing import Dict, Optional
@@ -33,8 +32,13 @@ class MCPConnectionManager:
         for server_config in self._config.mcp_servers:
             await self._connect_with_retry(server_config.server_url, server_config)
 
-    async def _connect_with_retry(self, server_name: str, server_config: MCPServerConfig, max_retries: int = 3,
-                                  delay: int = 5):
+    async def _connect_with_retry(
+        self,
+        server_name: str,
+        server_config: MCPServerConfig,
+        max_retries: int = 3,
+        delay: int = 5,
+    ):
         """
         Connects to an MCP server with retry logic.
 
@@ -51,9 +55,11 @@ class MCPConnectionManager:
             except Exception as e:
                 logger.error(f"Failed to connect to MCP server {server_name}: {e}")
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(delay * (2 ** attempt))
+                    await asyncio.sleep(delay * (2**attempt))
                 else:
-                    logger.error(f"Failed to connect to MCP server {server_name} after {max_retries} attempts.")
+                    logger.error(
+                        f"Failed to connect to MCP server {server_name} after {max_retries} attempts."
+                    )
 
     async def _connect(self, server_name: str, server_config: MCPServerConfig):
         """

@@ -1,5 +1,4 @@
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from app.models.mcp_config import MCPConfig, MCPServerConfig
@@ -20,8 +19,11 @@ def mcp_config():
 
 @pytest.mark.asyncio
 async def test_connect_to_servers_success(mcp_config):
-    with patch("app.services.mcp_connection_manager.create_mcp_http_client", new_callable=AsyncMock) as mock_create_client:
-        mock_client_instance = mock_create_client.return_value
+    with patch(
+        "app.services.mcp_connection_manager.create_mcp_http_client",
+        new_callable=AsyncMock,
+    ) as mock_create_client:
+        mock_create_client.return_value
 
         manager = MCPConnectionManager(mcp_config)
         await manager.connect_to_servers()
@@ -32,7 +34,10 @@ async def test_connect_to_servers_success(mcp_config):
 
 @pytest.mark.asyncio
 async def test_connect_to_servers_failure(mcp_config):
-    with patch("app.services.mcp_connection_manager.create_mcp_http_client", new_callable=AsyncMock) as mock_create_client:
+    with patch(
+        "app.services.mcp_connection_manager.create_mcp_http_client",
+        new_callable=AsyncMock,
+    ) as mock_create_client:
         mock_create_client.side_effect = Exception("Connection failed")
 
         manager = MCPConnectionManager(mcp_config)
@@ -44,7 +49,10 @@ async def test_connect_to_servers_failure(mcp_config):
 
 @pytest.mark.asyncio
 async def test_disconnect_from_servers(mcp_config):
-    with patch("app.services.mcp_connection_manager.create_mcp_http_client", new_callable=AsyncMock) as mock_create_client:
+    with patch(
+        "app.services.mcp_connection_manager.create_mcp_http_client",
+        new_callable=AsyncMock,
+    ) as mock_create_client:
         mock_client_instance = mock_create_client.return_value
         mock_client_instance.close = AsyncMock()
 
