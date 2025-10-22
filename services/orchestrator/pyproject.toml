@@ -27,6 +27,7 @@ pythonpath = [
 
 
 [tool.poetry.group.dev.dependencies]
+pytest-cov = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]

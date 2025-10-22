@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from app.api.v1 import incidents
 from app.services.knowledge_graph_service import KnowledgeGraphService
@@ -7,33 +8,48 @@ from pathlib import Path
 
 app = FastAPI()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 app.include_router(incidents.router, prefix="/api/v1")
 
 
 @app.on_event("startup")
 async def startup_event():
     app.state.knowledge_graph_service = KnowledgeGraphService(
-        knowledge_graph_path=Path(__file__).parent.parent.parent.parent
+        knowledge_graph_path=Path(__file__).parent.parent.parent.parent.parent
         / "knowledge_graph.yaml"
     )
-    mcp_config_service = MCPConfigService(
-        config_path=Path(__file__).parent.parent.parent.parent
-        / "mcp_config.yaml"
-    )
-    mcp_config = mcp_config_service.load_config()
-    app.state.mcp_connection_manager = MCPConnectionManager(mcp_config)
-    await app.state.mcp_connection_manager.connect_to_servers()
+    try:
+        mcp_config_service = MCPConfigService(
+            config_path=Path(__file__).parent.parent.parent.parent
+            / "mcp_config.yaml"
+        )
+        mcp_config = mcp_config_service.load_config()
+        app.state.mcp_connection_manager = MCPConnectionManager(mcp_config)
+        await app.state.mcp_connection_manager.connect_to_servers()
+        logger.info("MCP Connection Manager initialized and connected to servers.")
+    except Exception as e:
+        logger.warning(f"Failed to initialize MCP Connection Manager or connect to servers: {e}")
+        app.state.mcp_connection_manager = None # Ensure manager is not set if connection fails
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    if hasattr(app.state, "mcp_connection_manager"):
+    if hasattr(app.state, "mcp_connection_manager") and app.state.mcp_connection_manager:
         await app.state.mcp_connection_manager.disconnect_from_servers()
 
 
 @app.get("/health")
-def read_health():
+async def read_health():
     """
-    Checks the health of the application.
+    Checks the health of the application and MCP connection status.
     """
-    return {"status": "ok"}
+    health_status = {"status": "ok"}
+    if hasattr(app.state, "mcp_connection_manager") and app.state.mcp_connection_manager:
+        mcp_statuses = await app.state.mcp_connection_manager.get_connection_statuses()
+        health_status["mcp_connections"] = mcp_statuses
+    else:
+        health_status["mcp_connections"] = {"status": "not initialized"}
+    return health_status
