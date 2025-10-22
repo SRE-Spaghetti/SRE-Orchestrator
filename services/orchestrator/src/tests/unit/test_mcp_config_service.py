@@ -1,10 +1,7 @@
 import pytest
 from unittest.mock import patch, mock_open
 from pathlib import Path
-import yaml
-from pydantic import ValidationError
 
-from app.models.mcp_config import MCPConfig
 from app.services.mcp_config_service import MCPConfigService
 
 VALID_YAML = """
@@ -24,9 +21,11 @@ mcp_servers:
 
 MALFORMED_YAML = "mcp_servers: [ server_url: 'bad'"
 
+
 @pytest.fixture
 def mock_path() -> Path:
     return Path("/fake/path/mcp_config.yaml")
+
 
 def test_load_valid_config(mock_path):
     with patch("builtins.open", mock_open(read_data=VALID_YAML)) as mock_file:
@@ -38,6 +37,7 @@ def test_load_valid_config(mock_path):
             assert config.mcp_servers[0].server_url == "https://test.com"
             mock_file.assert_called_once_with(mock_path, "r")
 
+
 def test_missing_config_file(mock_path):
     with patch("pathlib.Path.is_file", return_value=False):
         service = MCPConfigService(mock_path)
@@ -45,27 +45,35 @@ def test_missing_config_file(mock_path):
         assert config is not None
         assert len(config.mcp_servers) == 0
 
+
 def test_empty_config_file(mock_path):
-    with patch("builtins.open", mock_open(read_data="")) as mock_file:
+    with patch("builtins.open", mock_open(read_data="")):
         with patch("pathlib.Path.is_file", return_value=True):
             service = MCPConfigService(mock_path)
             config = service.load_config()
             assert config is not None
             assert len(config.mcp_servers) == 0
 
+
 def test_invalid_schema(mock_path):
     with patch("builtins.open", mock_open(read_data=INVALID_SCHEMA_YAML)):
         with patch("pathlib.Path.is_file", return_value=True):
-            with pytest.raises(ValueError, match="Error loading or validating MCP config"):
+            with pytest.raises(
+                ValueError, match="Error loading or validating MCP config"
+            ):
                 service = MCPConfigService(mock_path)
                 service.load_config()
+
 
 def test_malformed_yaml(mock_path):
     with patch("builtins.open", mock_open(read_data=MALFORMED_YAML)):
         with patch("pathlib.Path.is_file", return_value=True):
-            with pytest.raises(ValueError, match="Error loading or validating MCP config"):
+            with pytest.raises(
+                ValueError, match="Error loading or validating MCP config"
+            ):
                 service = MCPConfigService(mock_path)
                 service.load_config()
+
 
 def test_io_error(mock_path):
     with patch("builtins.open", side_effect=IOError("File not readable")):

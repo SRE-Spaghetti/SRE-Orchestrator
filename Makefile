@@ -22,7 +22,7 @@ help:
 	@echo "  e.g.: make -C services/orchestrator run"
 
 
-install lint test docker-build format lock:
+install lint test docker-build format lock security:
 	@for service in $(SERVICES); do \
 		echo "Running '$@' for $$service..."; \
 		$(MAKE) -C $$service $@; \
@@ -34,6 +34,3 @@ run:
 	@echo "  make -C services/orchestrator run"
 	@echo "  make -C services/k8s-agent run"
 
-security:
-	@echo "Running trivy filesystem scan..."
-	trivy fs .

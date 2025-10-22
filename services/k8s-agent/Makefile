@@ -33,7 +33,7 @@ test:
 	@echo "Running tests with Pytest..."
 	@poetry run pytest
 
-docker-build:
+docker-build: lint format security
 	@echo "Building Docker image k8s-agent:latest..."
 	@docker build -t k8s-agent:latest .
 	@trivy image -q --severity HIGH,CRITICAL k8s-agent:latest
@@ -46,3 +46,7 @@ format:
 lock:
 	@echo "Generating poetry.lock file..."
 	@poetry lock
+
+security:
+	@echo "Running trivy filesystem scan..."
+	trivy fs .

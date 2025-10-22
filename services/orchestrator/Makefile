@@ -31,7 +31,7 @@ test:
 	@echo "Running tests with Pytest..."
 	@poetry run pytest
 
-docker-build:
+docker-build: lint format security
 	@echo "Building Docker image sre-orchestrator:latest..."
 	@docker build -t sre-orchestrator:latest .
 	@trivy image -q --severity HIGH,CRITICAL sre-orchestrator:latest
@@ -44,3 +44,7 @@ format:
 lock:
 	@echo "Generating poetry.lock file..."
 	@poetry lock
+
+security:
+	@echo "Running trivy filesystem scan..."
+	trivy fs .
