@@ -197,6 +197,21 @@ This project aims to address the significant operational overhead faced by SRE t
 4.  The data returned from the agent is stored as part of the incident's data in the in-memory store.
 5.  The `GET /api/v1/incidents/{id}` endpoint is updated to include a new `evidence` field containing the data collected from the agent.
 
+#### Story 2.5: K8s Agent Containerization and Deployment
+
+*   **As an** SRE team member,
+*   **I want** to containerize and deploy the k8s-agent service,
+*   **so that** it can be managed and run in a Kubernetes cluster.
+
+**Acceptance Criteria:**
+
+1.  A `Dockerfile` is created in the `services/k8s-agent` directory.
+2.  The `Dockerfile` produces a runnable container image for the k8s-agent application.
+3.  The `charts/sre-orchestrator/values.yaml` file is updated to include configuration for the k8s-agent.
+4.  A new `deployment-k8s-agent.yaml` is created in `charts/sre-orchestrator/templates/` to manage the k8s-agent deployment.
+5.  A new `service-k8s-agent.yaml` is created in `charts/sre-orchestrator/templates/` to expose the k8s-agent service.
+6.  The Helm chart can be successfully deployed with the new k8s-agent service.
+
 ---
 
 ### Epic 3: Intelligent Triage and Root Cause Suggestion
