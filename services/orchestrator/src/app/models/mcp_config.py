@@ -1,4 +1,4 @@
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 from typing import List, Optional
 from enum import Enum
 
@@ -15,7 +15,9 @@ class MCPAuthentication(BaseModel):
 
 class MCPServerConfig(BaseModel):
     server_url: str
-    transport_type: TransportType
+    transport_type: TransportType = Field(
+        ..., description="The transport type (e.g., 'http', 'grpc')."
+    )
     authentication: Optional[MCPAuthentication] = None
 
 
