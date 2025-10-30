@@ -37,6 +37,11 @@ orchestrator:
 
   affinity: {}
 
+  geminiApiKey: ""
+
+  k8sAgentBaseUrl: "http://sre-orch-k8s-agent:8000"
+  geminiModel: "gemini-2.5-flash"
+
   mcp_servers:
     - server_url: "msk-mcp-server.msk.svc.cluster.local:3000/mcp"
       transport_type: "http"

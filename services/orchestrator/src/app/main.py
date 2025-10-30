@@ -8,11 +8,21 @@ from pathlib import Path
 
 app = FastAPI()
 
+
+# Define a filter to exclude /health endpoint from logs
+class HealthCheckFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "GET /health" not in record.getMessage()
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Add the filter to the uvicorn access logger
+logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 
 app.include_router(incidents.router, prefix="/api/v1")
 

@@ -32,7 +32,8 @@ def test_extract_entities_success(llm_client):
         }
     )
     mock_llm_response = MagicMock()
-    mock_llm_response.text = mock_llm_response_text
+    # The response from the LLM can come back in json escaped in Markdown format
+    mock_llm_response.text = f"```json {mock_llm_response_text}```"
 
     with patch(
         "google.generativeai.GenerativeModel.generate_content",
