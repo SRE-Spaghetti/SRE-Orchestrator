@@ -69,6 +69,6 @@ security:
 		trivy fs .; \
 	fi
 
-kind-load:
+kind-load: docker-build
 	@echo "Loading image into kind..."
 	@kind load docker-image $(IMAGE_NAME):$(IMAGE_TAG)

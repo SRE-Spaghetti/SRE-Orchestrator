@@ -78,8 +78,15 @@ class MCPConnectionManager:
             server_name: The name of the server.
             server_config: The server configuration.
         """
-        client = await create_mcp_http_client(server_config.server_url)
-        self._clients[server_name] = client
+        async with create_mcp_http_client() as client:
+            response = await client.get(
+                f"{server_config.transport_type.value}://{server_config.server_url}"
+            )
+            if response.status_code == 200:
+                logger.info(f"Successfully connected to MCP server: {server_name}")
+                self._clients[server_name] = client
+            else:
+                raise AssertionError(f"Failed to connect to MCP server: {server_name}")
 
     def get_client(self, server_name: str) -> Optional[ClientSession]:
         """

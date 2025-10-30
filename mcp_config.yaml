@@ -1,3 +1,3 @@
 mcp_servers:
-  - server_url: "my-release-mcp-server-kubernetes.default.svc.cluster.local:80"
+  - server_url: "my-release-mcp-server-kubernetes:3000/mcp"
     transport_type: "http"
