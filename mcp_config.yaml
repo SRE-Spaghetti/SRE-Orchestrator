@@ -1,3 +1,0 @@
-mcp_servers:
-  - server_url: "my-release-mcp-server-kubernetes:3000/mcp"
-    transport_type: "http"

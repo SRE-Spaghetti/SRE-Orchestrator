@@ -12,9 +12,6 @@ RUN pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
     poetry install --without dev --no-root
 
-# Copy the config files
-COPY mcp_config.yaml /app/mcp_config.yaml
-
 # Copy the rest of the application code to the working directory
 COPY services/orchestrator/src/app ./app
 

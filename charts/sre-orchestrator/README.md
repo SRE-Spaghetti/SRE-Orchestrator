@@ -2,6 +2,15 @@
 
 This chart deploys the SRE Orchestrator application to a Kubernetes cluster.
 
+The default values expect that there is a Kubernetes MCP server installed in the `msk` namespace
+with the release name `msk` thereby giving a service name like:
+
+```
+msk-mcp-server.msk.svc.cluster.local
+```
+
+> If this is not the case override the `values.yaml`
+
 ## Prerequisites
 
 - A running Kubernetes cluster

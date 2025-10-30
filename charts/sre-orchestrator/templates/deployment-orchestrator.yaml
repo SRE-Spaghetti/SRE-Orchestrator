@@ -18,10 +18,18 @@ spec:
         app.kubernetes.io/component: orchestrator
     spec:
       serviceAccountName: {{ include "sre-orchestrator.serviceAccountName" . }}
+      volumes:
+        - name: mcp-config
+          configMap:
+            name: {{ include "sre-orchestrator.fullname" . }}-mcp-config
       containers:
         - name: orchestrator
           image: "{{ .Values.orchestrator.image.repository }}:{{ .Values.orchestrator.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.orchestrator.image.pullPolicy }}
+          volumeMounts:
+            - name: mcp-config
+              mountPath: /config/mcp_config.yaml
+              subPath: mcp_config.yaml
           ports:
             - name: http
               containerPort: 80

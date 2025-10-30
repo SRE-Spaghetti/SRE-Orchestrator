@@ -25,7 +25,7 @@ async def startup_event():
     )
 
     # TODO: Pass the mcp_server.yaml as a command line argument to the orchestrator instead of copying a file
-    config_path = Path("/app/mcp_config.yaml")
+    config_path = Path("/config/mcp_config.yaml")
     if not config_path.exists():
         config_path = (
             Path(__file__).parent.parent.parent.parent.parent / "mcp_config.yaml"

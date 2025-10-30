@@ -79,8 +79,13 @@ class MCPConnectionManager:
             server_config: The server configuration.
         """
         async with create_mcp_http_client() as client:
-            response = await client.get(
-                f"{server_config.transport_type.value}://{server_config.server_url}"
+            response = await client.post(
+                f"{server_config.transport_type.value}://{server_config.server_url}",
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json,text/event-stream",
+                },
             )
             if response.status_code == 200:
                 logger.info(f"Successfully connected to MCP server: {server_name}")

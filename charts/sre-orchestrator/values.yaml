@@ -37,6 +37,10 @@ orchestrator:
 
   affinity: {}
 
+  mcp_servers:
+    - server_url: "msk-mcp-server.msk.svc.cluster.local:3000/mcp"
+      transport_type: "http"
+
 k8sAgent:
   replicaCount: 1
 
