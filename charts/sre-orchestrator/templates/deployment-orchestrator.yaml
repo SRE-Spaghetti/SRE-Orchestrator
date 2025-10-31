@@ -18,10 +18,30 @@ spec:
         app.kubernetes.io/component: orchestrator
     spec:
       serviceAccountName: {{ include "sre-orchestrator.serviceAccountName" . }}
+      volumes:
+        - name: mcp-config
+          configMap:
+            name: {{ include "sre-orchestrator.fullname" . }}-mcp-config
       containers:
         - name: orchestrator
           image: "{{ .Values.orchestrator.image.repository }}:{{ .Values.orchestrator.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.orchestrator.image.pullPolicy }}
+          env:
+          {{- if .Values.orchestrator.geminiApiKey }}
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sre-orchestrator.fullname" . }}-gemini-api-key
+                  key: GEMINI_API_KEY
+          {{- end }}
+            - name: K8S_AGENT_BASE_URL
+              value: {{ .Values.orchestrator.k8sAgentBaseUrl | quote }}
+            - name: GEMINI_MODEL
+              value: {{ .Values.orchestrator.geminiModel | quote }}
+          volumeMounts:
+            - name: mcp-config
+              mountPath: /config/mcp_config.yaml
+              subPath: mcp_config.yaml
           ports:
             - name: http
               containerPort: 80

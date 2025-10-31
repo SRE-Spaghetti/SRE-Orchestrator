@@ -2,7 +2,7 @@
 
 SERVICES := services/orchestrator services/k8s-agent
 
-.PHONY: help docker-build lint test run install format lock security
+.PHONY: help docker-build lint test run install format lock security kind-load
 .SHELLFLAGS := -ec
 
 help:
@@ -16,13 +16,14 @@ help:
 	@echo "  format                 Format all services"
 	@echo "  lock                   Generate poetry.lock for all services"
 	@echo "  security               Run trivy filesystem scan"
+	@echo "  kind-load              Load docker images into kind for all services"
 	@echo ""
 	@echo "To run a command on a specific service:"
 	@echo "  make -C <service_directory> <target>"
 	@echo "  e.g.: make -C services/orchestrator run"
 
 
-install lint test docker-build format lock security:
+install lint test docker-build format lock security kind-load:
 	@for service in $(SERVICES); do \
 		echo "Running '$@' for $$service..."; \
 		$(MAKE) -C $$service $@; \

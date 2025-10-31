@@ -1,3 +1,0 @@
-mcp_servers:
-  - server_url: "http://localhost:8080/mcp"
-    transport_type: "http"

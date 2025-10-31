@@ -1,0 +1,15 @@
+{{- if .Values.orchestrator.mcp_servers }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sre-orchestrator.fullname" . }}-mcp-config
+  labels:
+    {{- include "sre-orchestrator.labels" . | nindent 4 }}
+data:
+  mcp_config.yaml: |
+    mcp_servers:
+    {{- range .Values.orchestrator.mcp_servers }}
+      - server_url: {{ .server_url | quote }}
+        transport_type: {{ .transport_type | quote }}
+    {{- end }}
+{{- end }}
