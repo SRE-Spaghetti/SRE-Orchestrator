@@ -51,7 +51,7 @@ cd mcp-server-kubernetes
 Then install this chart with
 
 ```bash
-helm -n msk install msk charts/mcp-server-kubernetes/ --set service.port=3000 --create-namespace
+helm -n msk install msk charts/mcp-server-kubernetes/ --create-namespace
 ```
 
 ### Test the MCP server
