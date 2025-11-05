@@ -15,9 +15,9 @@ orchestrator:
   replicaCount: 1
 
   image:
-    repository: sre-orchestrator
+    repository: ghcr.io/sre-spaghetti/sre-orchestrator
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "0.1.0"
 
   service:
     type: ClusterIP
@@ -43,16 +43,16 @@ orchestrator:
   geminiModel: "gemini-2.5-flash"
 
   mcp_servers:
-    - server_url: "msk-mcp-server.msk.svc.cluster.local:3000/mcp"
+    - server_url: "msk-mcp-server-kubernetes.msk.svc.cluster.local:3000/mcp"
       transport_type: "http"
 
 k8sAgent:
   replicaCount: 1
 
   image:
-    repository: k8s-agent
+    repository: ghcr.io/sre-spaghetti/k8s-agent
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "0.1.0"
 
   service:
     type: ClusterIP

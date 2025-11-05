@@ -36,7 +36,8 @@ Deploy the SRE-Orchestrator by its helm chart to a Kubernetes cluster, passing i
 a Gemini API Key.
 
 ```bash
-helm -n sre install sre ./charts/sre-orchestrator/ --set orchestrator.geminiApiKey=<YOUR_GEMINI_API_KEY> --create-namespace
+export GEMINI_API_KEY=...
+helm -n sre install --create-namespace sre oci://ghcr.io/sre-spaghetti/charts/sre-orchestrator --version 0.1.0  --set orchestrator.geminiApiKey=$GEMINI_API_KEY
 ```
 
 ### Deploy the MCP Server Kubernetes
