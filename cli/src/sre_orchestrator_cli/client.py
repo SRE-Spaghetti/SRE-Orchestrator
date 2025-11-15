@@ -28,7 +28,7 @@ class NotFoundError(OrchestratorClientError):
 class OrchestratorClient:
     """Client for interacting with the SRE Orchestrator API."""
 
-    def __init__(self, base_url: str, api_key: Optional[str] = None, timeout: float = 30.0):
+    def __init__(self, base_url: str, api_key: Optional[str] = None, timeout: float = 60.0):
         """
         Initialize the orchestrator client.
 
