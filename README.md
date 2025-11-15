@@ -25,14 +25,14 @@ about the system state through a digital twin or knowledge graph, so it understa
 each other. The Orchestrator will leverage existing MCP servers for the agents, so it can start by reuse them if
 existing (e.g. Prometheus MCP agent), if not new Langgraph agents can be written. Essentially, it's designed to take an
 external application, look for user flow errors (e.g. 400, 500 errors) and automatically coordinate the right diagnostic
-agents to pinpoint the possible issues and then provide actionable insights for resolution. 
+agents to pinpoint the possible issues and then provide actionable insights for resolution.
 ```
 
 ## Usage
 
 ### Deploy SRE-Orchestrator
 
-Deploy the SRE-Orchestrator by its helm chart to a Kubernetes cluster, passing in 
+Deploy the SRE-Orchestrator by its helm chart to a Kubernetes cluster, passing in
 a Gemini API Key.
 
 ```bash
@@ -98,8 +98,7 @@ localhost:8080/api/v1/incidents \
 -d '{"description": "New Test incident pod:etcd-kind-control-plane namespace:kube-system"}'
 ```
 
-This should return an incident ID in UUID format. The `k8s-agent-service` will go off and retrieve the
-logs from the pod and add them to the incident.
+This should return an incident ID in UUID format. The orchestrator will use MCP tools to investigate the incident and retrieve relevant data.
 
 These can be viewed by querying the incident by its ID. For example:
 

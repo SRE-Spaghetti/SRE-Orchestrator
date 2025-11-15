@@ -16,8 +16,9 @@ RUN pip install --no-cache-dir poetry && \
 COPY services/orchestrator/src/app ./app
 
 RUN echo "components:" > /knowledge_graph.yaml && \
-    echo "  - name: k8s-agent" >> /knowledge_graph.yaml && \
-    echo "    type: service" >> /knowledge_graph.yaml
+    echo "  - name: orchestrator-service" >> /knowledge_graph.yaml && \
+    echo "    type: service" >> /knowledge_graph.yaml && \
+    echo "    relationships: []" >> /knowledge_graph.yaml
 
 # Make port 80 available to the world outside this container
 EXPOSE 80

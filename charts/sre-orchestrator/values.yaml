@@ -38,36 +38,8 @@ orchestrator:
   affinity: {}
 
   geminiApiKey: ""
-
-  k8sAgentBaseUrl: "http://sre-orch-k8s-agent:8000"
   geminiModel: "gemini-2.5-flash"
 
   mcp_servers:
     - server_url: "msk-mcp-server-kubernetes.msk.svc.cluster.local:3000/mcp"
       transport_type: "http"
-
-k8sAgent:
-  replicaCount: 1
-
-  image:
-    repository: ghcr.io/sre-spaghetti/k8s-agent
-    pullPolicy: IfNotPresent
-    tag: "0.1.0"
-
-  service:
-    type: ClusterIP
-    port: 8000
-
-  resources:
-   limits:
-    cpu: 100m
-    memory: 128Mi
-   requests:
-    cpu: 100m
-    memory: 128Mi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}

@@ -10,10 +10,7 @@ def temp_knowledge_graph_file(tmp_path):
 components:
   - name: orchestrator-service
     type: service
-    relationships:
-      - depends_on: k8s-agent
-  - name: k8s-agent
-    type: service
+    relationships: []
   - name: database
     type: datastore
     relationships:
@@ -31,20 +28,13 @@ def knowledge_graph_service(temp_knowledge_graph_file):
 
 def test_load_graph_success(knowledge_graph_service):
     assert isinstance(knowledge_graph_service._graph, KnowledgeGraph)
-    assert len(knowledge_graph_service._graph.components) == 3
+    assert len(knowledge_graph_service._graph.components) == 2
 
     orchestrator = knowledge_graph_service.get_component("orchestrator-service")
     assert orchestrator is not None
     assert orchestrator.name == "orchestrator-service"
     assert orchestrator.type == "service"
-    assert len(orchestrator.relationships) == 1
-    assert orchestrator.relationships[0].depends_on == "k8s-agent"
-
-    k8s_agent = knowledge_graph_service.get_component("k8s-agent")
-    assert k8s_agent is not None
-    assert k8s_agent.name == "k8s-agent"
-    assert k8s_agent.type == "service"
-    assert not k8s_agent.relationships
+    assert len(orchestrator.relationships) == 0
 
     database = knowledge_graph_service.get_component("database")
     assert database is not None
@@ -56,9 +46,6 @@ def test_load_graph_success(knowledge_graph_service):
 
 def test_get_dependencies(knowledge_graph_service):
     deps = knowledge_graph_service.get_dependencies("orchestrator-service")
-    assert deps == ["k8s-agent"]
-
-    deps = knowledge_graph_service.get_dependencies("k8s-agent")
     assert deps == []
 
     deps = knowledge_graph_service.get_dependencies("database")
