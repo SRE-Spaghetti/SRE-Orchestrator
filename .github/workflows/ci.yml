@@ -1,0 +1,220 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Orchestrator service tests
+  orchestrator-test:
+    name: Test Orchestrator Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/orchestrator
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run linting
+      run: poetry run ruff check .
+
+    - name: Run formatting check
+      run: poetry run black --check .
+
+    - name: Run tests
+      run: poetry run pytest --cov=app --cov-report=xml --cov-report=term
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: services/orchestrator/coverage.xml
+        flags: orchestrator
+        fail_ci_if_error: false
+
+  # CLI tests
+  cli-test:
+    name: Test CLI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run linting
+      run: poetry run ruff check .
+
+    - name: Run formatting check
+      run: poetry run black --check .
+
+    - name: Run tests
+      run: poetry run pytest --cov=sre_orchestrator_cli --cov-report=xml --cov-report=term
+
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4
+      with:
+        file: cli/coverage.xml
+        flags: cli
+        fail_ci_if_error: false
+
+  # Build orchestrator Docker image
+  orchestrator-build:
+    name: Build Orchestrator Docker Image
+    runs-on: ubuntu-latest
+    needs: orchestrator-test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: services/orchestrator/Dockerfile
+        push: false
+        tags: sre-orchestrator:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: sre-orchestrator:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Build CLI package
+  cli-build:
+    name: Build CLI Package
+    runs-on: ubuntu-latest
+    needs: cli-test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Build package
+      working-directory: cli
+      run: poetry build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-dist
+        path: cli/dist/
+
+  # Deploy orchestrator (only on main branch)
+  orchestrator-deploy:
+    name: Deploy Orchestrator
+    runs-on: ubuntu-latest
+    needs: orchestrator-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.REGISTRY_URL }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: services/orchestrator/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.REGISTRY_URL }}/sre-orchestrator:latest
+          ${{ secrets.REGISTRY_URL }}/sre-orchestrator:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to Kubernetes
+      run: |
+        echo "Deployment step - configure based on your Kubernetes setup"
+        # Example: kubectl set image deployment/orchestrator orchestrator=${{ secrets.REGISTRY_URL }}/sre-orchestrator:${{ github.sha }}
+
+  # Publish CLI to PyPI (only on tags)
+  cli-publish:
+    name: Publish CLI to PyPI
+    runs-on: ubuntu-latest
+    needs: cli-build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Build package
+      working-directory: cli
+      run: poetry build
+
+    - name: Publish to PyPI
+      working-directory: cli
+      env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+      run: poetry publish
