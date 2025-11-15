@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import Dict, Optional, Any, List
 from datetime import datetime
 import logging
-from ..models.incidents import Incident, InvestigationStep
+from ..models.incidents import Incident, InvestigationStep, IncidentStatus
 from ..core.investigation_agent import create_investigation_agent, investigate_incident
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class IncidentRepository:
         Returns:
             Incident with status="pending"
         """
-        incident = Incident(description=description, status="pending")
+        incident = Incident(description=description, status=IncidentStatus.PENDING)
         self._incidents[incident.id] = incident
 
         logger.info(f"Created incident {incident.id} with status 'pending'")
@@ -64,7 +64,7 @@ class IncidentRepository:
             await self._investigate_incident(incident, mcp_tools, llm_config)
         except Exception as e:
             logger.error(f"Background investigation failed for incident {incident_id}: {e}", exc_info=True)
-            incident.status = "failed"
+            incident.status = IncidentStatus.FAILED
             incident.error_message = str(e)
             incident.completed_at = datetime.utcnow()
 
@@ -117,7 +117,7 @@ class IncidentRepository:
         incident_id = str(incident.id)
 
         # Update status to in_progress
-        incident.status = "in_progress"
+        incident.status = IncidentStatus.IN_PROGRESS
         incident.investigation_steps.append(
             InvestigationStep(
                 step_name="investigation_started",
@@ -171,7 +171,7 @@ class IncidentRepository:
 
         # Update incident with investigation results
         if result["status"] == "completed":
-            incident.status = "completed"
+            incident.status = IncidentStatus.COMPLETED
             incident.suggested_root_cause = result["root_cause"]
             incident.confidence_score = result["confidence"]
             incident.completed_at = datetime.utcnow()
@@ -205,7 +205,7 @@ class IncidentRepository:
             )
         else:
             # Investigation failed - preserve partial results
-            incident.status = "failed"
+            incident.status = IncidentStatus.FAILED
             incident.error_message = result.get("error", "Unknown error")
             incident.completed_at = datetime.utcnow()
 
@@ -275,7 +275,7 @@ class IncidentRepository:
     def update_status(
         self,
         incident_id: UUID,
-        status: str,
+        status: IncidentStatus | str,
         details: Optional[Dict[str, Any]] = None
     ):
         """
@@ -283,20 +283,24 @@ class IncidentRepository:
 
         Args:
             incident_id: The incident UUID
-            status: New status value
+            status: New status value (IncidentStatus enum or string)
             details: Optional details about the status change
         """
         incident = self._incidents.get(incident_id)
         if incident:
+            # Convert string to enum if needed
+            if isinstance(status, str):
+                status = IncidentStatus(status)
+
             incident.status = status
 
-            if status == "failed" and details and "error" in details:
+            if status == IncidentStatus.FAILED and details and "error" in details:
                 incident.error_message = details["error"]
                 incident.completed_at = datetime.utcnow()
-            elif status == "completed":
+            elif status == IncidentStatus.COMPLETED:
                 incident.completed_at = datetime.utcnow()
 
-            logger.info(f"Updated incident {incident_id} status to '{status}'")
+            logger.info(f"Updated incident {incident_id} status to '{status.value}'")
 
 
 # A single instance to act as our in-memory database
