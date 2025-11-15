@@ -209,3 +209,193 @@ class TestOrchestratorClient:
 
             mock_client.aclose.assert_called_once()
             assert client._client is None
+
+
+
+class TestAsyncIncidentWorkflow:
+    """Tests for async incident workflow in CLI client."""
+
+    @pytest.mark.asyncio
+    async def test_create_incident_parses_new_response_format(self, base_url, api_key):
+        """Test create_incident() parses new 202 response format with incident_id and status."""
+        mock_response = Mock()
+        mock_response.status_code = 202
+        mock_response.json.return_value = {
+            "incident_id": "test-incident-123",
+            "status": "pending"
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.post.return_value = mock_response
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+            result = await client.create_incident("Pod is crashing")
+
+            assert result["incident_id"] == "test-incident-123"
+            assert result["status"] == "pending"
+            mock_client.post.assert_called_once_with(
+                "/api/v1/incidents",
+                json={"description": "Pod is crashing"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_polls_until_completion(self, base_url, api_key):
+        """Test poll_incident() polls until status is completed."""
+        # Mock responses: pending -> in_progress -> completed
+        mock_responses = [
+            {"id": "incident-123", "status": "pending", "description": "Test"},
+            {"id": "incident-123", "status": "in_progress", "description": "Test"},
+            {"id": "incident-123", "status": "completed", "description": "Test", "suggested_root_cause": "Memory leak"}
+        ]
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+
+            # Create side effect that returns different responses
+            call_count = 0
+            async def mock_get(*args, **kwargs):
+                nonlocal call_count
+                response = Mock()
+                response.status_code = 200
+                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                call_count += 1
+                return response
+
+            mock_client.get.side_effect = mock_get
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+            result = await client.poll_incident("incident-123", interval=0.1, timeout=10.0)
+
+            assert result["status"] == "completed"
+            assert result["suggested_root_cause"] == "Memory leak"
+            assert call_count == 3  # Should have polled 3 times
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_stops_on_failed_status(self, base_url, api_key):
+        """Test poll_incident() stops polling when status is failed."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "incident-123",
+            "status": "failed",
+            "description": "Test",
+            "error_message": "Investigation timeout"
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_response
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+            result = await client.poll_incident("incident-123", interval=0.1, timeout=10.0)
+
+            assert result["status"] == "failed"
+            assert result["error_message"] == "Investigation timeout"
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_raises_timeout_error(self, base_url, api_key):
+        """Test poll_incident() raises TimeoutError after timeout duration."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "incident-123",
+            "status": "in_progress",
+            "description": "Test"
+        }
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_response
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+
+            with pytest.raises(TimeoutError, match="Polling timed out after 0.5 seconds"):
+                await client.poll_incident("incident-123", interval=0.1, timeout=0.5)
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_handles_keyboard_interrupt(self, base_url, api_key):
+        """Test poll_incident() propagates KeyboardInterrupt for graceful handling."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+
+            # Simulate KeyboardInterrupt on get request
+            mock_client.get.side_effect = KeyboardInterrupt()
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+
+            with pytest.raises(KeyboardInterrupt):
+                await client.poll_incident("incident-123", interval=0.1, timeout=10.0)
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_calls_callback(self, base_url, api_key):
+        """Test poll_incident() calls callback on each poll."""
+        mock_responses = [
+            {"id": "incident-123", "status": "pending", "description": "Test"},
+            {"id": "incident-123", "status": "completed", "description": "Test"}
+        ]
+
+        callback_calls = []
+        def test_callback(incident):
+            callback_calls.append(incident["status"])
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+
+            call_count = 0
+            async def mock_get(*args, **kwargs):
+                nonlocal call_count
+                response = Mock()
+                response.status_code = 200
+                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                call_count += 1
+                return response
+
+            mock_client.get.side_effect = mock_get
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+            await client.poll_incident("incident-123", interval=0.1, timeout=10.0, callback=test_callback)
+
+            assert callback_calls == ["pending", "completed"]
+
+    @pytest.mark.asyncio
+    async def test_poll_incident_respects_interval(self, base_url, api_key):
+        """Test poll_incident() respects polling interval."""
+        import time
+
+        mock_responses = [
+            {"id": "incident-123", "status": "pending", "description": "Test"},
+            {"id": "incident-123", "status": "completed", "description": "Test"}
+        ]
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+
+            call_count = 0
+            call_times = []
+
+            async def mock_get(*args, **kwargs):
+                nonlocal call_count
+                call_times.append(time.time())
+                response = Mock()
+                response.status_code = 200
+                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                call_count += 1
+                return response
+
+            mock_client.get.side_effect = mock_get
+            mock_client_class.return_value = mock_client
+
+            client = OrchestratorClient(base_url, api_key)
+            await client.poll_incident("incident-123", interval=0.2, timeout=10.0)
+
+            # Check that there was at least 0.2 seconds between calls
+            if len(call_times) > 1:
+                time_diff = call_times[1] - call_times[0]
+                assert time_diff >= 0.2, f"Interval was {time_diff:.3f}s, expected >= 0.2s"
