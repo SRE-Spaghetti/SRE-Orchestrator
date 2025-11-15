@@ -37,6 +37,11 @@
 #   url: "http://prometheus-mcp-server:9090/mcp"
 #   transport: "streamable_http"
 
-# Default configuration (empty - no servers configured)
+# Default configuration (npx mcp-server-kubernetes)
+local-tools:
+  command: "npx"
+  args:
+    - "mcp-server-kubernetes"
+  transport: "stdio"
+
 # Add your MCP server configurations below:
-{}

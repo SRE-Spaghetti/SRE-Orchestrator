@@ -3,3 +3,4 @@
 services/orchestrator/.coverage
 cli/dist/*
 .kiro/**/*
+.env

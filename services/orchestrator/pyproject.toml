@@ -24,12 +24,14 @@ langchain-mcp-adapters = "^0.1.0"
 langchain-openai = "^1.0.0"
 pydantic-core = "^2.41.5"
 
+[tool.poetry.scripts]
+dev = "uvicorn app.main:app --reload --app-dir src"
+start = "uvicorn app.main:app --app-dir src"
+
 [tool.pytest.ini_options]
 pythonpath = [
     "src"
 ]
-
-
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.0.0"
