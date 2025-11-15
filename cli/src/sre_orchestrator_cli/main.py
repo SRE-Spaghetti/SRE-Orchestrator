@@ -96,31 +96,47 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
                     # Create incident
                     with show_progress() as progress:
                         task = progress.add_task("Creating incident...", total=None)
-                        incident_id = await client.create_incident(user_input)
+                        result = await client.create_incident(user_input)
+                        incident_id = result["incident_id"]
                         progress.update(task, description="Incident created")
 
                     session.add_incident(incident_id)
                     print_success(f"Incident created: {incident_id[:8]}...")
 
-                    # Poll for completion
+                    # Poll for completion with 5-second intervals and 10-minute timeout
                     console.print()
-                    with show_progress() as progress:
-                        task = progress.add_task("Investigating...", total=None)
+                    try:
+                        with show_progress() as progress:
+                            task = progress.add_task("Investigating...", total=None)
 
-                        max_attempts = 60  # 60 seconds timeout
-                        for _ in range(max_attempts):
-                            incident = await client.get_incident(incident_id)
+                            def update_progress(incident):
+                                status = incident.get("status", "unknown")
+                                progress.update(task, description=f"Investigating... ({status})")
 
-                            if incident['status'] in ['completed', 'failed']:
-                                break
+                            incident = await client.poll_incident(
+                                incident_id,
+                                interval=5.0,
+                                timeout=600.0,
+                                callback=update_progress
+                            )
 
-                            await asyncio.sleep(1)
+                        # Display results
+                        console.print()
+                        console.print(format_incident(incident))
+                        console.print()
 
-                    # Display results
-                    incident = await client.get_incident(incident_id)
-                    console.print()
-                    console.print(format_incident(incident))
-                    console.print()
+                    except KeyboardInterrupt:
+                        console.print()
+                        print_info(f"Investigation continues in background.")
+                        print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                        print_info("Use 'exit' or 'quit' to leave")
+                        continue
+                    except TimeoutError as e:
+                        console.print()
+                        print_error(str(e))
+                        print_info(f"Investigation continues in background.")
+                        print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                        continue
 
                 except KeyboardInterrupt:
                     console.print()
@@ -195,28 +211,41 @@ async def investigate_async(description: str, url: Optional[str], api_key: Optio
             # Create incident
             with show_progress() as progress:
                 task = progress.add_task("Creating incident...", total=None)
-                incident_id = await client.create_incident(description)
+                result = await client.create_incident(description)
+                incident_id = result["incident_id"]
 
             print_success(f"Incident created: {incident_id}")
 
             if wait:
-                # Poll for completion
-                with show_progress() as progress:
-                    task = progress.add_task("Investigating...", total=None)
+                try:
+                    # Poll for completion with 5-second intervals and 10-minute timeout
+                    with show_progress() as progress:
+                        task = progress.add_task("Investigating...", total=None)
 
-                    max_attempts = 60
-                    for _ in range(max_attempts):
-                        incident = await client.get_incident(incident_id)
+                        def update_progress(incident):
+                            status = incident.get("status", "unknown")
+                            progress.update(task, description=f"Investigating... ({status})")
 
-                        if incident['status'] in ['completed', 'failed']:
-                            break
+                        incident = await client.poll_incident(
+                            incident_id,
+                            interval=5.0,
+                            timeout=600.0,
+                            callback=update_progress
+                        )
 
-                        await asyncio.sleep(1)
+                    # Display results
+                    console.print()
+                    console.print(format_incident(incident))
 
-                # Display results
-                incident = await client.get_incident(incident_id)
-                console.print()
-                console.print(format_incident(incident))
+                except KeyboardInterrupt:
+                    console.print()
+                    print_info(f"Investigation continues in background.")
+                    print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                except TimeoutError as e:
+                    console.print()
+                    print_error(str(e))
+                    print_info(f"Investigation continues in background.")
+                    print_info(f"Check status with: sre-orchestrator show {incident_id}")
             else:
                 print_info(f"Investigation started. Check status with: sre-orchestrator show {incident_id}")
 
