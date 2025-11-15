@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 from app.models.incidents import NewIncidentRequest, NewIncidentResponse, Incident
 from app.core.incident_repository import IncidentRepository, get_incident_repository
 from uuid import UUID
 import logging
 import os
+import asyncio
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -17,7 +18,6 @@ logger = logging.getLogger(__name__)
 async def create_incident(
     fastapi_req: Request,
     request: NewIncidentRequest,
-    background_tasks: BackgroundTasks,
     repo: IncidentRepository = Depends(get_incident_repository),
 ):
     """
@@ -57,12 +57,14 @@ async def create_incident(
     try:
         incident = repo.create_incident_sync(description=request.description)
 
-        # Schedule background investigation
-        background_tasks.add_task(
-            repo.investigate_incident_async,
-            incident.id,
-            mcp_tools,
-            llm_config
+        # Schedule background investigation as an async task
+        # This runs in the event loop without blocking the thread pool
+        asyncio.create_task(
+            repo.investigate_incident_async(
+                incident.id,
+                mcp_tools,
+                llm_config
+            )
         )
 
         return NewIncidentResponse(incident_id=incident.id, status=incident.status)

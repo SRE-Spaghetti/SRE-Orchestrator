@@ -1,6 +1,25 @@
 # SRE Orchestrator Service
 
-FastAPI-based orchestrator service for SRE incident management and investigation.
+FastAPI-based orchestrator service for SRE incident management and investigation using native LangGraph StateGraph implementation.
+
+## Architecture
+
+The SRE Orchestrator uses a **native LangGraph StateGraph** implementation for autonomous incident investigation. This provides:
+
+- **Explicit Control**: Clear definition of workflow nodes, edges, and routing logic
+- **Extensibility**: Easy to add custom nodes (validation, human-in-the-loop, etc.)
+- **Observability**: Comprehensive logging at each node transition with correlation IDs
+- **Flexibility**: Customizable routing logic and state management
+- **ReAct Pattern**: Alternates between reasoning (LLM) and acting (tool execution)
+
+The investigation workflow consists of:
+1. **Agent Node**: LLM analyzes the incident and decides on actions
+2. **Tool Node**: Executes MCP tools to gather evidence
+3. **Routing Logic**: Determines whether to continue with tools or complete investigation
+
+For detailed architecture documentation, see [docs/langgraph-workflow.md](../../docs/langgraph-workflow.md).
+
+For production deployment and monitoring guidance, see [docs/native-langgraph-deployment-guide.md](../../docs/native-langgraph-deployment-guide.md).
 
 ## Configuration
 

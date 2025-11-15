@@ -2,7 +2,17 @@
 
 ## Overview
 
-The SRE Orchestrator uses LangGraph's ReAct (Reasoning + Acting) agent pattern to autonomously investigate incidents. This document explains how the workflow operates, how MCP tools are integrated, and provides examples of agent investigations.
+The SRE Orchestrator uses LangGraph's native StateGraph implementation with the ReAct (Reasoning + Acting) pattern to autonomously investigate incidents. This document explains how the workflow operates, the native graph structure, how MCP tools are integrated, and provides examples of agent investigations.
+
+## Native LangGraph Implementation
+
+The investigation agent uses a **native LangGraph StateGraph** implementation, which provides explicit control over the workflow graph structure. This approach offers several advantages over prebuilt agent functions:
+
+- **Full Control**: Explicit definition of nodes, edges, and routing logic
+- **Extensibility**: Easy to add new nodes (validation, human-in-the-loop, etc.)
+- **Observability**: Comprehensive logging at each node transition
+- **Customization**: Flexible routing logic and state management
+- **Debugging**: Clear visibility into graph execution flow
 
 ## ReAct Agent Pattern
 
@@ -19,23 +29,209 @@ This creates an autonomous investigation loop where the agent:
 - Continues until sufficient evidence is gathered
 - Determines the root cause with confidence level
 
-## Architecture
+## Native StateGraph Architecture
+
+### High-Level Graph Structure
 
 ```mermaid
 graph TD
-    A[Incident Created] --> B[Initialize Agent]
-    B --> C[LLM Reasoning]
-    C --> D{Need More Info?}
-    D -->|Yes| E[Select Tool]
-    E --> F[Execute MCP Tool]
-    F --> G[Process Results]
-    G --> C
-    D -->|No| H[Determine Root Cause]
-    H --> I[Update Incident]
-    I --> J[Investigation Complete]
+    Start([Start]) --> Agent[Agent Node<br/>LLM Reasoning]
+    Agent --> Router{should_continue<br/>Routing Logic}
+    Router -->|Tool Calls Present| Tools[Tool Node<br/>Execute MCP Tools]
+    Router -->|Final Answer| End([End])
+    Tools --> Agent
+
+    style Agent fill:#e1f5ff
+    style Tools fill:#fff4e1
+    style Router fill:#f0f0f0
 ```
 
-## Agent Components
+### Detailed Investigation Flow
+
+```mermaid
+graph TD
+    A[Incident Created] --> B[Initialize State]
+    B --> C[Create Initial Messages]
+    C --> D[Agent Node: LLM Reasoning]
+    D --> E{should_continue?}
+    E -->|has_tool_calls| F[Tool Node: Execute Tools]
+    F --> G[Update State with Results]
+    G --> D
+    E -->|no_tool_calls| H[Extract Results]
+    H --> I[Parse Root Cause]
+    I --> J[Update Incident]
+    J --> K[Investigation Complete]
+
+    style D fill:#e1f5ff
+    style F fill:#fff4e1
+    style E fill:#f0f0f0
+```
+
+## Graph Components
+
+### State Schema
+
+The investigation workflow uses a well-defined state schema that flows through all nodes:
+
+```python
+from typing import TypedDict, Annotated, Sequence
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+class InvestigationState(TypedDict):
+    """State schema for the investigation workflow."""
+
+    # Conversation history with automatic message appending
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+
+    # Investigation metadata
+    incident_id: str
+    correlation_id: str
+    investigation_status: str  # "in_progress", "completed", "failed"
+```
+
+**Key Features:**
+- **`messages` field**: Uses the `add_messages` reducer annotation, which automatically appends new messages to the list when nodes return partial state updates
+- **Metadata fields**: Track incident ID and correlation ID for logging and tracing
+- **Status tracking**: Monitor investigation progress through the workflow
+- **Extensible**: New fields can be added without breaking existing nodes
+
+### Agent Node
+
+The agent node invokes the LLM for reasoning and decision-making:
+
+```python
+async def agent_node(state: InvestigationState) -> InvestigationState:
+    """
+    Agent node that invokes the LLM for reasoning and decision-making.
+
+    This node:
+    1. Takes the current state (including message history)
+    2. Invokes the LLM with tools bound
+    3. Returns updated state with LLM response
+    """
+    correlation_id = state.get("correlation_id")
+    incident_id = state.get("incident_id")
+
+    # Invoke the LLM with current messages
+    response = await model_with_tools.ainvoke(state["messages"])
+
+    # Return partial state update - add_messages reducer appends the response
+    return {"messages": [response]}
+```
+
+**Responsibilities:**
+- Invoke LLM with current conversation history
+- Handle errors and update investigation status
+- Use retry logic for transient failures
+- Log execution with correlation ID
+
+### Tool Node
+
+The tool node executes tools requested by the LLM:
+
+```python
+from langgraph.prebuilt import ToolNode
+
+# Create tool node with MCP tools
+tool_node = ToolNode(mcp_tools)
+```
+
+The tool node is wrapped with custom logging for observability:
+
+```python
+async def tool_node_with_logging(state: InvestigationState):
+    """Tool node with comprehensive logging."""
+    # Log tool invocations
+    # Execute tools using LangGraph's ToolNode
+    # Log tool results with timing information
+    # Handle errors gracefully
+    return result
+```
+
+**Responsibilities:**
+- Execute tools requested by the LLM
+- Log tool invocations and results
+- Handle tool execution errors
+- Return tool results as ToolMessage objects
+
+### Routing Logic
+
+The routing function determines the next step after agent execution:
+
+```python
+def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
+    """
+    Routing function to determine if workflow should continue to tools or end.
+
+    Checks the last message from the agent:
+    - If it contains tool calls, route to "tools"
+    - If it's a final answer, route to "end"
+    """
+    messages = state["messages"]
+    last_message = messages[-1]
+
+    # Check if the last message has tool calls
+    has_tool_calls = hasattr(last_message, "tool_calls") and bool(last_message.tool_calls)
+
+    if has_tool_calls:
+        return "tools"
+    else:
+        return "end"
+```
+
+**Routing Decisions:**
+- **"tools"**: LLM requested tool execution → route to tool node
+- **"end"**: LLM provided final answer → complete investigation
+
+**Extensibility:**
+The routing logic can be extended to support:
+- Maximum iteration limits
+- Confidence thresholds for early termination
+- Validation requirements before completion
+- Multi-phase investigation workflows
+
+### Graph Construction
+
+The graph is constructed by assembling nodes and edges:
+
+```python
+from langgraph.graph import StateGraph, END
+
+# Create the state graph with InvestigationState schema
+graph = StateGraph(InvestigationState)
+
+# Add nodes
+graph.add_node("agent", agent_node)
+graph.add_node("tools", tool_node)
+
+# Add conditional edges from agent
+graph.add_conditional_edges(
+    "agent",
+    should_continue,
+    {
+        "tools": "tools",  # If should_continue returns "tools"
+        "end": END         # If should_continue returns "end"
+    }
+)
+
+# Add edge from tools back to agent
+graph.add_edge("tools", "agent")
+
+# Set entry point
+graph.set_entry_point("agent")
+
+# Compile the graph
+agent = graph.compile()
+```
+
+**Graph Execution:**
+1. Start at agent node (entry point)
+2. Agent invokes LLM for reasoning
+3. Routing function checks for tool calls
+4. If tool calls exist, execute tools and return to agent
+5. If no tool calls, end investigation
+6. Extract and return results
 
 ### System Prompt
 
@@ -86,12 +282,48 @@ mcp_client = MultiServerMCPClient(mcp_config)
 # Get all tools from all connected MCP servers
 tools = await mcp_client.get_tools()
 
-# Create ReAct agent with tools
-agent = create_react_agent(
-    model=model,
-    tools=tools,
-    state_modifier=system_prompt
+# Create native LangGraph agent with tools
+agent = await create_investigation_agent_native(
+    mcp_tools=tools,
+    llm_config={
+        "base_url": os.getenv("LLM_BASE_URL"),
+        "api_key": os.getenv("LLM_API_KEY"),
+        "model_name": os.getenv("LLM_MODEL", "gpt-4"),
+        "temperature": 0.7,
+        "max_tokens": 2000
+    },
+    correlation_id=correlation_id
 )
+```
+
+### Investigation Execution
+
+The investigation is executed by invoking the compiled graph with initial state:
+
+```python
+# Create initial state
+initial_state = {
+    "messages": [
+        SystemMessage(content=INVESTIGATION_SYSTEM_PROMPT),
+        HumanMessage(content=incident_description)
+    ],
+    "incident_id": incident_id,
+    "correlation_id": correlation_id,
+    "investigation_status": "in_progress"
+}
+
+# Invoke the agent
+result = await agent.ainvoke(initial_state)
+
+# Extract results from final state
+messages = result.get("messages", [])
+final_message = messages[-1]
+
+# Parse structured information
+root_cause = extract_root_cause(final_message.content)
+confidence = extract_confidence(final_message.content)
+evidence = extract_evidence(messages)
+recommendations = extract_recommendations(final_message.content)
 ```
 
 ## MCP Tool Integration
@@ -618,21 +850,103 @@ All agent actions are logged with structured context:
 2. Adjust system prompt to require more evidence
 3. Increase tool execution timeout
 
+## Extending the Graph
+
+The native StateGraph implementation makes it easy to extend the investigation workflow. See [extending-investigation-graph.md](./extending-investigation-graph.md) for detailed examples.
+
+### Common Extensions
+
+**Adding a Validation Node:**
+```python
+async def validation_node(state: InvestigationState):
+    """Validate investigation results before completing."""
+    # Check if root cause is identified
+    # Check if confidence is acceptable
+    # Return state with validation status
+    pass
+
+graph.add_node("validation", validation_node)
+graph.add_conditional_edges("agent", should_continue, {
+    "tools": "tools",
+    "validate": "validation",
+    "end": END
+})
+```
+
+**Adding Maximum Iterations:**
+```python
+class InvestigationState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    incident_id: str
+    correlation_id: str
+    investigation_status: str
+    iteration_count: int  # New field
+
+def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
+    # Check iteration limit
+    if state.get("iteration_count", 0) > 5:
+        return "end"
+
+    # Check for tool calls
+    last_message = state["messages"][-1]
+    has_tool_calls = hasattr(last_message, "tool_calls") and bool(last_message.tool_calls)
+
+    return "tools" if has_tool_calls else "end"
+```
+
+**Adding Human-in-the-Loop:**
+```python
+async def human_approval_node(state: InvestigationState):
+    """Wait for human approval before completing."""
+    # Send notification to human
+    # Wait for approval
+    # Return state with approval status
+    pass
+
+graph.add_node("human_approval", human_approval_node)
+graph.add_edge("validation", "human_approval")
+graph.add_edge("human_approval", END)
+```
+
 ## Future Enhancements
 
 ### Planned Features
 
 1. **Multi-Agent Collaboration**: Multiple specialized agents working together
-2. **Investigation Checkpointing**: Save and resume long-running investigations
+2. **Investigation Checkpointing**: Save and resume long-running investigations using LangGraph's built-in checkpointing
 3. **Learning from Past Incidents**: Use historical data to improve investigations
 4. **Custom Tool Development**: Framework for creating domain-specific tools
-5. **Streaming Responses**: Real-time investigation progress updates
+5. **Streaming Responses**: Real-time investigation progress updates using LangGraph streaming
 
 ### Extensibility
 
-The ReAct agent pattern is highly extensible:
+The native StateGraph implementation is highly extensible:
 
+- **New Nodes**: Add validation, enrichment, or approval nodes
+- **Custom Routing**: Implement complex routing logic based on state
+- **State Extensions**: Add new fields to track additional information
 - **New MCP Servers**: Just add to configuration, tools automatically available
 - **Custom Prompts**: Modify system prompt for different investigation styles
 - **Alternative LLMs**: Swap LLM provider via environment variables
 - **Tool Filtering**: Selectively enable/disable tools per investigation type
+
+## Implementation Details
+
+### Implementation
+
+The system uses the native LangGraph StateGraph implementation exclusively:
+
+```python
+# Create investigation agent
+agent = await create_investigation_agent(
+    mcp_tools=tools,
+    llm_config=config,
+    correlation_id="corr-123"
+)
+```
+
+The native implementation provides:
+- Explicit control over workflow graph structure
+- Better observability with comprehensive logging
+- Easier extensibility for custom nodes and routing
+- Full backward compatibility with existing API

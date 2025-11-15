@@ -1,23 +1,489 @@
 """
-LangGraph ReAct agent for incident investigation.
+LangGraph native StateGraph agent for incident investigation.
 
-This module provides the agent factory and investigation execution functions
-for autonomous incident investigation using LangGraph's ReAct pattern.
+This module provides a native LangGraph StateGraph implementation for autonomous
+incident investigation using the ReAct (Reasoning + Acting) pattern. The native
+implementation provides explicit control over the workflow graph structure,
+enabling better observability, extensibility, and customization compared to
+prebuilt agent functions.
+
+Key Components:
+    - InvestigationState: TypedDict schema defining the state structure
+    - agent_node: LLM reasoning node that decides on actions
+    - tool_node: Tool execution node that runs MCP tools
+    - should_continue: Routing function that determines workflow transitions
+    - create_investigation_agent_native: Factory function for native graph
+    - investigate_incident: Main entry point for executing investigations
+
+Architecture:
+    The investigation workflow is implemented as a StateGraph with explicit nodes
+    and edges:
+
+    Start → Agent Node → Routing Logic → Tool Node → Agent Node → ... → End
+                              ↓
+                            End (if final answer)
+
+    The agent alternates between reasoning (agent node) and acting (tool node)
+    until it reaches a final conclusion. The routing logic checks if the LLM
+    requested tool calls to determine the next step.
+
+Features:
+    - Native LangGraph StateGraph implementation with explicit nodes and edges
+    - Comprehensive logging with correlation IDs for tracing
+    - Retry logic for transient LLM failures
+    - Error handling at node and graph levels
+    - Backward compatible with existing API and tests
+    - Extensible design for adding custom nodes and routing logic
+
+Usage:
+    >>> # Create agent
+    >>> agent = await create_investigation_agent(
+    ...     mcp_tools=tools,
+    ...     llm_config={"base_url": "...", "api_key": "..."},
+    ...     correlation_id="corr-123"
+    ... )
+    >>>
+    >>> # Execute investigation
+    >>> result = await investigate_incident(
+    ...     agent=agent,
+    ...     incident_id="inc-456",
+    ...     description="Pod is crashing",
+    ...     correlation_id="corr-123"
+    ... )
+    >>>
+    >>> # Access results
+    >>> print(result["root_cause"])
+    >>> print(result["confidence"])
+    >>> print(result["recommendations"])
+
+For more information on extending the graph, see:
+    docs/extending-investigation-graph.md
 """
 
 import logging
-import os
 import re
 import uuid
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal, TypedDict, Annotated, Sequence
 from datetime import datetime
 
-from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage, HumanMessage
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 
 from .retry_utils import retry_async, RetryConfig
 
 logger = logging.getLogger(__name__)
+
+
+class InvestigationState(TypedDict):
+    """
+    State schema for the investigation workflow.
+
+    This TypedDict defines the structure of the state that flows through the
+    LangGraph investigation workflow. The state is passed between nodes and
+    tracks the entire investigation process.
+
+    Attributes:
+        messages: Conversation history including human messages, AI responses,
+                 and tool execution results. Uses the add_messages reducer to
+                 automatically append new messages to the list.
+        incident_id: Unique identifier for the incident being investigated.
+        correlation_id: Unique identifier for tracing the investigation across
+                       logs and services.
+        investigation_status: Current status of the investigation. Valid values:
+                             "in_progress", "completed", "failed".
+
+    Example:
+        >>> state = InvestigationState(
+        ...     messages=[HumanMessage(content="Pod is crashing")],
+        ...     incident_id="inc-123",
+        ...     correlation_id="corr-456",
+        ...     investigation_status="in_progress"
+        ... )
+
+    Note:
+        The messages field uses the add_messages reducer annotation, which means
+        when nodes return partial state updates with new messages, those messages
+        are automatically appended to the existing messages list rather than
+        replacing it. This is essential for maintaining conversation history.
+
+        Additional fields can be added to this schema in the future without
+        breaking existing nodes, as long as they are optional or have defaults.
+    """
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    incident_id: str
+    correlation_id: str
+    investigation_status: str
+
+
+def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
+    """
+    Routing function to determine if the workflow should continue to tools or end.
+
+    This function checks the last message from the agent to determine the next
+    step in the investigation workflow:
+    - If the last message contains tool calls, route to the "tools" node
+    - If the last message is a final answer (no tool calls), route to "end"
+
+    This routing logic implements the core ReAct pattern where the agent
+    alternates between reasoning (agent node) and acting (tool node) until
+    it reaches a final conclusion.
+
+    Args:
+        state: Current investigation state containing messages and metadata
+
+    Returns:
+        "tools" to execute tools, or "end" to finish the workflow
+
+    Example:
+        >>> # Agent requests tool execution
+        >>> state = {
+        ...     "messages": [AIMessage(content="", tool_calls=[{"name": "get_pod"}])],
+        ...     "correlation_id": "corr-123",
+        ...     "incident_id": "inc-456"
+        ... }
+        >>> should_continue(state)
+        'tools'
+
+        >>> # Agent provides final answer
+        >>> state = {
+        ...     "messages": [AIMessage(content="ROOT CAUSE: Memory leak")],
+        ...     "correlation_id": "corr-123",
+        ...     "incident_id": "inc-456"
+        ... }
+        >>> should_continue(state)
+        'end'
+
+    Note:
+        This function logs routing decisions with correlation ID for debugging
+        and observability. The routing logic can be extended in the future to
+        support additional conditions such as:
+        - Maximum iteration limits
+        - Confidence thresholds for early termination
+        - Validation requirements before completion
+    """
+    correlation_id = state.get("correlation_id")
+    incident_id = state.get("incident_id")
+
+    messages = state["messages"]
+    last_message = messages[-1]
+
+    # Check if the last message has tool calls
+    has_tool_calls = hasattr(last_message, "tool_calls") and bool(last_message.tool_calls)
+
+    if has_tool_calls:
+        tool_count = len(last_message.tool_calls)
+        tool_names = [tc.get("name", "unknown") for tc in last_message.tool_calls]
+
+        logger.info(
+            "Routing to tools node",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "tool_count": tool_count,
+                "tool_names": tool_names,
+                "routing_decision": "tools"
+            }
+        )
+        return "tools"
+    else:
+        logger.info(
+            "Routing to end - investigation complete",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "routing_decision": "end",
+                "final_message_preview": last_message.content[:100] if hasattr(last_message, "content") and last_message.content else "No content"
+            }
+        )
+        return "end"
+
+
+def create_agent_node(model_with_tools: Any) -> callable:
+    """
+    Create an agent node function for the LangGraph workflow.
+
+    This function creates an agent node that invokes the LLM with tools bound
+    for reasoning and decision-making. The node includes comprehensive error
+    handling, retry logic, and logging for observability.
+
+    The agent node:
+    1. Extracts correlation_id and incident_id from state for logging
+    2. Invokes the LLM with the current message history
+    3. Returns a partial state update with the LLM's response
+    4. Handles errors gracefully and updates investigation status
+    5. Uses retry logic for transient failures
+
+    Args:
+        model_with_tools: LLM instance with tools bound via bind_tools()
+
+    Returns:
+        Async function that executes the agent node
+
+    Example:
+        >>> model_with_tools = model.bind_tools(mcp_tools)
+        >>> agent_node = create_agent_node(model_with_tools)
+        >>> result = await agent_node(state)
+
+    Note:
+        The agent node uses the retry_async utility with DEFAULT_LLM_RETRY_CONFIG
+        to handle transient LLM failures. All operations are logged with
+        correlation ID and incident ID for tracing.
+    """
+    async def agent_node(state: InvestigationState) -> InvestigationState:
+        """
+        Agent node that invokes the LLM for reasoning and decision-making.
+
+        This node takes the current investigation state (including message history),
+        invokes the LLM with tools bound, and returns an updated state with the
+        LLM's response. The response may include tool calls or a final answer.
+
+        Args:
+            state: Current investigation state containing messages and metadata
+
+        Returns:
+            Updated state with LLM response added to messages, or error status
+            if the invocation fails
+
+        Raises:
+            Does not raise exceptions - errors are captured in the state
+        """
+        correlation_id = state.get("correlation_id")
+        incident_id = state.get("incident_id")
+
+        logger.info(
+            "Agent node executing",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "message_count": len(state["messages"]),
+                "investigation_status": state.get("investigation_status", "unknown")
+            }
+        )
+
+        try:
+            # Define the LLM invocation function for retry wrapper
+            async def invoke_llm():
+                """Invoke the LLM with current messages."""
+                return await model_with_tools.ainvoke(state["messages"])
+
+            # Invoke the LLM with retry logic
+            response = await retry_async(
+                invoke_llm,
+                DEFAULT_LLM_RETRY_CONFIG,
+                correlation_id
+            )
+
+            # Check if response has tool calls
+            has_tool_calls = hasattr(response, "tool_calls") and bool(response.tool_calls)
+
+            logger.info(
+                "Agent node completed successfully",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "has_tool_calls": has_tool_calls,
+                    "tool_count": len(response.tool_calls) if has_tool_calls else 0,
+                    "response_length": len(response.content) if hasattr(response, "content") and response.content else 0
+                }
+            )
+
+            # Return partial state update - add_messages reducer will append the response
+            return {"messages": [response]}
+
+        except Exception as e:
+            logger.error(
+                "Agent node failed",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "investigation_status": state.get("investigation_status", "unknown")
+                },
+                exc_info=True
+            )
+
+            # Update investigation status to failed
+            return {
+                "messages": [],
+                "investigation_status": "failed"
+            }
+
+    return agent_node
+
+
+def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
+    """
+    Create a tool node with custom logging wrapper.
+
+    This function creates a wrapper around LangGraph's prebuilt ToolNode that
+    adds comprehensive logging for tool invocations, results, and errors.
+
+    The wrapper logs:
+    - Tool invocations with correlation ID and incident ID
+    - Tool execution timing information
+    - Tool results with content preview
+    - Tool errors with full context
+
+    Args:
+        mcp_tools: List of LangChain-compatible MCP tools
+
+    Returns:
+        Async function that executes tools with logging
+
+    Example:
+        >>> tool_node = create_tool_node_with_logging(mcp_tools)
+        >>> result = await tool_node(state)
+
+    Note:
+        This wrapper uses LangGraph's prebuilt ToolNode for actual tool
+        execution, ensuring compatibility with LangGraph's tool calling
+        conventions while adding observability through structured logging.
+    """
+    # Create the prebuilt ToolNode
+    base_tool_node = ToolNode(mcp_tools)
+
+    async def tool_node_with_logging(state: InvestigationState) -> InvestigationState:
+        """
+        Tool node that executes tools with comprehensive logging.
+
+        This node:
+        1. Extracts tool calls from the last message
+        2. Logs tool invocations with correlation ID
+        3. Executes tools using LangGraph's ToolNode
+        4. Logs tool results with timing information
+        5. Logs tool errors with context
+
+        Args:
+            state: Current investigation state
+
+        Returns:
+            Updated state with tool results added to messages
+        """
+        correlation_id = state.get("correlation_id")
+        incident_id = state.get("incident_id")
+
+        messages = state["messages"]
+        last_message = messages[-1] if messages else None
+
+        # Extract tool calls for logging
+        tool_calls = []
+        if last_message and hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            tool_calls = last_message.tool_calls
+
+        if not tool_calls:
+            logger.warning(
+                "Tool node called but no tool calls found",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "message_count": len(messages)
+                }
+            )
+            return {"messages": []}
+
+        # Log tool invocations
+        logger.info(
+            "Tool node executing",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "tool_count": len(tool_calls),
+                "tool_names": [tc.get("name", "unknown") for tc in tool_calls]
+            }
+        )
+
+        # Log each tool invocation
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("name", "unknown")
+            tool_args = tool_call.get("args", {})
+
+            logger.info(
+                "Executing tool",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "tool_name": tool_name,
+                    "tool_args": tool_args,
+                    "tool_call_id": tool_call.get("id", "unknown")
+                }
+            )
+
+        # Execute tools using the base ToolNode
+        start_time = datetime.utcnow()
+
+        try:
+            result = await base_tool_node.ainvoke(state)
+
+            end_time = datetime.utcnow()
+            duration_ms = (end_time - start_time).total_seconds() * 1000
+
+            # Log tool execution completion
+            logger.info(
+                "Tool node completed",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "tool_count": len(tool_calls),
+                    "duration_ms": duration_ms
+                }
+            )
+
+            # Log individual tool results
+            result_messages = result.get("messages", [])
+            for msg in result_messages:
+                if isinstance(msg, ToolMessage):
+                    tool_name = getattr(msg, "name", "unknown")
+                    content = getattr(msg, "content", "")
+                    tool_call_id = getattr(msg, "tool_call_id", "unknown")
+
+                    logger.info(
+                        "Tool execution result",
+                        extra={
+                            "correlation_id": correlation_id,
+                            "incident_id": incident_id,
+                            "tool_name": tool_name,
+                            "tool_call_id": tool_call_id,
+                            "result_length": len(str(content)),
+                            "result_preview": str(content)[:200] if len(str(content)) > 200 else str(content)
+                        }
+                    )
+
+            return result
+
+        except Exception as e:
+            end_time = datetime.utcnow()
+            duration_ms = (end_time - start_time).total_seconds() * 1000
+
+            logger.error(
+                "Tool node execution failed",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "tool_count": len(tool_calls),
+                    "tool_names": [tc.get("name", "unknown") for tc in tool_calls],
+                    "duration_ms": duration_ms,
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                },
+                exc_info=True
+            )
+
+            # Return error messages for each tool call
+            error_messages = []
+            for tool_call in tool_calls:
+                error_msg = ToolMessage(
+                    content=f"Error executing tool: {str(e)}",
+                    tool_call_id=tool_call.get("id", "unknown"),
+                    name=tool_call.get("name", "unknown")
+                )
+                error_messages.append(error_msg)
+
+            return {"messages": error_messages}
+
+    return tool_node_with_logging
 
 
 def generate_correlation_id() -> str:
@@ -60,12 +526,19 @@ RECOMMENDATIONS: [Actionable recommendations]
 Be thorough but concise. Focus on the most relevant information."""
 
 
-async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
+async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
     """
-    Create a ReAct agent for incident investigation.
+    Create a native LangGraph StateGraph agent for incident investigation.
 
-    This function creates a LangGraph ReAct agent configured with MCP tools
-    and an LLM for autonomous incident investigation.
+    This function creates a native LangGraph StateGraph implementation with
+    explicit nodes and edges for the investigation workflow. This provides
+    greater control and extensibility compared to the prebuilt create_agent.
+
+    The native graph includes:
+    - Explicit agent node for LLM reasoning
+    - Explicit tool node for tool execution
+    - Conditional routing logic between nodes
+    - Comprehensive logging and error handling
 
     Args:
         mcp_tools: List of LangChain-compatible MCP tools
@@ -82,15 +555,30 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
 
     Raises:
         ValueError: If required configuration keys are missing
+        Exception: If graph construction fails
+
+    Example:
+        >>> agent = await create_investigation_agent_native(
+        ...     mcp_tools=tools,
+        ...     llm_config={"base_url": "...", "api_key": "..."},
+        ...     correlation_id="corr-123"
+        ... )
+        >>> result = await agent.ainvoke({
+        ...     "messages": [HumanMessage(content="Pod is crashing")],
+        ...     "incident_id": "inc-456",
+        ...     "correlation_id": "corr-123",
+        ...     "investigation_status": "in_progress"
+        ... })
     """
     try:
-        # Get LLM configuration from the required parameter
+        # Extract LLM configuration
         base_url = llm_config.get("base_url")
         api_key = llm_config.get("api_key")
         model_name = llm_config.get("model_name", "gpt-4")
         temperature = llm_config.get("temperature", 0.7)
         max_tokens = llm_config.get("max_tokens", 2000)
 
+        # Validate required configuration
         if not base_url:
             raise ValueError("llm_config missing required key: base_url")
         if not api_key:
@@ -105,36 +593,138 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
             max_tokens=max_tokens
         )
 
+        # Bind tools to the model
+        model_with_tools = model.bind_tools(mcp_tools)
+
         logger.info(
-            "Creating investigation agent",
+            "Creating native LangGraph investigation agent",
             extra={
                 "correlation_id": correlation_id,
                 "model": model_name,
                 "tool_count": len(mcp_tools),
-                "tool_names": [tool.name for tool in mcp_tools] if mcp_tools else []
+                "tool_names": [tool.name for tool in mcp_tools] if mcp_tools else [],
+                "implementation": "native"
             }
         )
 
-        # Create ReAct agent with tools and system prompt
-        agent = create_agent(
-            model=model,
-            tools=mcp_tools,
-            system_prompt=INVESTIGATION_SYSTEM_PROMPT
+        # Import StateGraph and END
+        from langgraph.graph import StateGraph, END
+
+        # Create the state graph with InvestigationState schema
+        graph = StateGraph(InvestigationState)
+
+        # Create agent node with model_with_tools in closure
+        agent_node = create_agent_node(model_with_tools)
+
+        # Create tool node with logging
+        tool_node = create_tool_node_with_logging(mcp_tools)
+
+        # Add nodes to the graph
+        graph.add_node("agent", agent_node)
+        graph.add_node("tools", tool_node)
+
+        # Add conditional edges from agent using should_continue
+        graph.add_conditional_edges(
+            "agent",
+            should_continue,
+            {
+                "tools": "tools",
+                "end": END
+            }
         )
 
+        # Add edge from tools back to agent
+        graph.add_edge("tools", "agent")
+
+        # Set entry point to agent node
+        graph.set_entry_point("agent")
+
         logger.info(
-            "Investigation agent created successfully",
-            extra={"correlation_id": correlation_id}
+            "Compiling native LangGraph investigation agent",
+            extra={
+                "correlation_id": correlation_id,
+                "node_count": 2,
+                "nodes": ["agent", "tools"]
+            }
         )
+
+        # Compile the graph to create executable agent
+        agent = graph.compile()
+
+        logger.info(
+            "Native LangGraph investigation agent created successfully",
+            extra={
+                "correlation_id": correlation_id,
+                "implementation": "native",
+                "model": model_name,
+                "tool_count": len(mcp_tools)
+            }
+        )
+
         return agent
 
     except Exception as e:
         logger.error(
-            "Failed to create investigation agent",
-            extra={"correlation_id": correlation_id, "error": str(e)},
+            "Failed to create native LangGraph investigation agent",
+            extra={
+                "correlation_id": correlation_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "implementation": "native"
+            },
             exc_info=True
         )
         raise
+
+
+
+
+
+async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
+    """
+    Create a native LangGraph StateGraph agent for incident investigation.
+
+    This function creates a native LangGraph StateGraph implementation with
+    explicit nodes and edges for the investigation workflow. This provides
+    greater control and extensibility compared to prebuilt agent functions.
+
+    The native graph includes:
+    - Explicit agent node for LLM reasoning
+    - Explicit tool node for tool execution
+    - Conditional routing logic between nodes
+    - Comprehensive logging and error handling
+
+    Args:
+        mcp_tools: List of LangChain-compatible MCP tools
+        llm_config: LLM configuration dictionary containing:
+                   - base_url: LLM API endpoint
+                   - api_key: API authentication key
+                   - model_name: Model name (default: "gpt-4")
+                   - temperature: Temperature setting (default: 0.7)
+                   - max_tokens: Max tokens (default: 2000)
+        correlation_id: Optional correlation ID for tracing
+
+    Returns:
+        Compiled LangGraph agent ready for investigation
+
+    Raises:
+        ValueError: If required configuration keys are missing
+        Exception: If graph construction fails
+
+    Example:
+        >>> agent = await create_investigation_agent(
+        ...     mcp_tools=tools,
+        ...     llm_config={"base_url": "...", "api_key": "..."},
+        ...     correlation_id="corr-123"
+        ... )
+        >>> result = await agent.ainvoke({
+        ...     "messages": [HumanMessage(content="Pod is crashing")],
+        ...     "incident_id": "inc-456",
+        ...     "correlation_id": "corr-123",
+        ...     "investigation_status": "in_progress"
+        ... })
+    """
+    return await create_investigation_agent_native(mcp_tools, llm_config, correlation_id)
 
 
 async def investigate_incident(
@@ -206,13 +796,30 @@ async def investigate_incident(
             }
         )
 
+        # Create initial state with messages, incident_id, correlation_id, investigation_status
+        initial_state = {
+            "messages": [
+                SystemMessage(content=INVESTIGATION_SYSTEM_PROMPT),
+                HumanMessage(content=description)
+            ],
+            "incident_id": incident_id,
+            "correlation_id": correlation_id,
+            "investigation_status": "in_progress"
+        }
+
+        logger.info(
+            "Created initial investigation state",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "message_count": len(initial_state["messages"]),
+                "investigation_status": initial_state["investigation_status"]
+            }
+        )
+
         # Wrap agent invocation with retry logic.
         async def invoke_agent():
-            return await agent.ainvoke({
-                "messages": [
-                    ("human", description)
-                ]
-            })
+            return await agent.ainvoke(initial_state)
 
         result = await retry_async(
             invoke_agent,

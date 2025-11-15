@@ -296,6 +296,7 @@ print(f"Confidence: {incident['confidence_score']}")
 
 - [Architecture Documentation](docs/architecture.md) - System architecture and design
 - [LangGraph Workflow Guide](docs/langgraph-workflow.md) - How the ReAct agent works
+- [Native LangGraph Deployment Guide](docs/native-langgraph-deployment-guide.md) - Production deployment and monitoring
 - [MCP Integration Guide](docs/mcp-integration.md) - Adding and creating MCP tools
 - [CLI User Guide](docs/cli-guide.md) - Complete CLI documentation
 - [REST API Specification](docs/architecture.md#rest-api-spec) - API endpoints and schemas
