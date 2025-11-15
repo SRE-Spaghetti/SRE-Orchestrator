@@ -37,9 +37,49 @@ orchestrator:
 
   affinity: {}
 
-  geminiApiKey: ""
-  geminiModel: "gemini-2.5-flash"
+# LLM Configuration
+# Configure the LLM provider for incident investigation
+llm:
+  # Base URL for the LLM API (OpenAI-compatible endpoint)
+  # Examples:
+  #   OpenAI: "https://api.openai.com/v1"
+  #   Gemini (via OpenAI proxy): "https://generativelanguage.googleapis.com/v1beta/openai/"
+  #   Azure OpenAI: "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT"
+  #   Local LLM (Ollama): "http://localhost:11434/v1"
+  baseUrl: "https://api.openai.com/v1"
 
-  mcp_servers:
-    - server_url: "msk-mcp-server-kubernetes.msk.svc.cluster.local:3000/mcp"
-      transport_type: "http"
+  # LLM model name
+  # Examples:
+  #   OpenAI: "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"
+  #   Gemini: "gemini-2.0-flash-exp", "gemini-1.5-pro"
+  #   Azure OpenAI: Use your deployment name
+  #   Local LLM: "llama3", "mistral", etc.
+  modelName: "gpt-4"
+
+  # API key for LLM authentication
+  # Leave empty to skip creating the secret (useful if using external secret management)
+  # For production, consider using external-secrets or sealed-secrets instead
+  apiKey: ""
+
+# MCP (Model Context Protocol) Configuration
+# Configure MCP servers that provide tools for incident investigation
+mcp:
+  servers:
+    # Kubernetes MCP Server - provides tools for querying Kubernetes resources
+    - name: "kubernetes"
+      url: "http://kubernetes-mcp-server:8080/mcp"
+      transport: "streamable_http"
+      # Optional: Add authentication headers if required
+      # headers:
+      #   Authorization: "Bearer YOUR_TOKEN"
+
+    # Example: Prometheus MCP Server (uncomment to enable)
+    # - name: "prometheus"
+    #   url: "http://prometheus-mcp-server:9090/mcp"
+    #   transport: "streamable_http"
+
+    # Example: Local MCP Server via stdio (uncomment to enable)
+    # - name: "custom-tools"
+    #   command: "python"
+    #   args: ["/path/to/mcp_server.py"]
+    #   transport: "stdio"
