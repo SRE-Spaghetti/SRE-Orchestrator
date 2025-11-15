@@ -3,6 +3,7 @@ from app.models.incidents import NewIncidentRequest, NewIncidentResponse, Incide
 from app.core.incident_repository import IncidentRepository, get_incident_repository
 from app.services.k8s_agent_client import K8sAgentClient, get_k8s_agent_client
 from app.services.llm_client import LLMClient, get_llm_client
+from app.services.langchain_llm_client import LangChainLLMClient, get_langchain_llm_client
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from uuid import UUID
 

@@ -4,6 +4,7 @@ from app.api.v1 import incidents
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.services.mcp_config_service import MCPConfigService
 from app.services.mcp_connection_manager import MCPConnectionManager
+from app.services.langchain_llm_client import get_langchain_llm_client, LangChainLLMClient
 from pathlib import Path
 
 app = FastAPI()
@@ -33,6 +34,14 @@ async def startup_event():
         knowledge_graph_path=Path(__file__).parent.parent.parent.parent.parent
         / "knowledge_graph.yaml"
     )
+
+    # Initialize LangChain LLM client (keep old LLM client for comparison)
+    try:
+        app.state.langchain_llm_client = get_langchain_llm_client()
+        logger.info("LangChain LLM client initialized successfully.")
+    except Exception as e:
+        logger.warning(f"Failed to initialize LangChain LLM client: {e}")
+        app.state.langchain_llm_client = None
 
     # TODO: Pass the mcp_server.yaml as a command line argument to the orchestrator instead of copying a file
     config_path = Path("/config/mcp_config.yaml")
@@ -71,6 +80,17 @@ async def read_health():
     Checks the health of the application and MCP connection status.
     """
     health_status = {"status": "ok"}
+
+    # Check LangChain LLM client status
+    if hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client:
+        health_status["langchain_llm"] = {
+            "status": "initialized",
+            "model": app.state.langchain_llm_client.config.model_name
+        }
+    else:
+        health_status["langchain_llm"] = {"status": "not initialized"}
+
+    # Check MCP connection status
     if (
         hasattr(app.state, "mcp_connection_manager")
         and app.state.mcp_connection_manager
