@@ -12,7 +12,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Literal
 from datetime import datetime
 
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 from .retry_utils import retry_async, RetryConfig
@@ -116,10 +116,10 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
         )
 
         # Create ReAct agent with tools and system prompt
-        agent = create_react_agent(
+        agent = create_agent(
             model=model,
             tools=mcp_tools,
-            state_modifier=INVESTIGATION_SYSTEM_PROMPT
+            system_prompt=INVESTIGATION_SYSTEM_PROMPT
         )
 
         logger.info(
@@ -206,11 +206,10 @@ async def investigate_incident(
             }
         )
 
-        # Wrap agent invocation with retry logic
+        # Wrap agent invocation with retry logic.
         async def invoke_agent():
             return await agent.ainvoke({
                 "messages": [
-                    ("system", "Investigate this incident and provide root cause analysis."),
                     ("human", description)
                 ]
             })
