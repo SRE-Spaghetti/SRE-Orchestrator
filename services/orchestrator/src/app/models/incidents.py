@@ -2,6 +2,15 @@ from pydantic import BaseModel, Field
 from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Dict, Any, List, Literal
+from enum import Enum
+
+
+class IncidentStatus(str, Enum):
+    """Enumeration of possible incident investigation statuses"""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class NewIncidentRequest(BaseModel):
@@ -10,6 +19,7 @@ class NewIncidentRequest(BaseModel):
 
 class NewIncidentResponse(BaseModel):
     incident_id: UUID
+    status: str
 
 
 class InvestigationStep(BaseModel):
@@ -23,7 +33,7 @@ class InvestigationStep(BaseModel):
 class Incident(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     description: str
-    status: Literal["pending", "in_progress", "completed", "failed"] = "pending"
+    status: IncidentStatus = IncidentStatus.PENDING
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
     evidence: Dict[str, Any] = Field(default_factory=dict)
