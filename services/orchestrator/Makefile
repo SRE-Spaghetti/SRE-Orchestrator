@@ -21,6 +21,10 @@ help:
 	@echo "  docker-build           Build the Docker image. Docker must be already installed."
 	@echo "  format                 Format the code with Black."
 	@echo "  lock                   Generate poetry.lock file."
+	@echo ""
+	@echo "Environment Variables:"
+	@echo "  MCP_CONFIG_PATH        Path to MCP configuration file (optional)"
+	@echo "                         Default: ./mcp_config.yaml"
 
 env-check:
 	@echo "Checking required environment variables..."

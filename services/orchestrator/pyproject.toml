@@ -23,6 +23,7 @@ langgraph = "^1.0.0"
 langchain-mcp-adapters = "^0.1.0"
 langchain-openai = "^1.0.0"
 pydantic-core = "^2.41.5"
+python-dotenv = "^1.2.1"
 
 [tool.poetry.scripts]
 dev = "uvicorn app.main:app --reload --app-dir src"

@@ -1,4 +1,5 @@
 import logging
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from app.api.v1 import incidents
 from app.services.knowledge_graph_service import KnowledgeGraphService
@@ -7,10 +8,11 @@ from app.services.mcp_connection_manager import MCPConnectionManager
 from app.services.langchain_llm_client import get_langchain_llm_client, LangChainLLMClient
 from app.services.mcp_tool_manager import MCPToolManager
 from app.services.mcp_tool_config_loader import MCPToolConfigLoader
+from app.config import get_mcp_config_path
 from pathlib import Path
 
+load_dotenv()
 app = FastAPI()
-
 
 # Define a filter to exclude /health endpoint from logs
 class HealthCheckFilter(logging.Filter):
@@ -45,16 +47,14 @@ async def startup_event():
         logger.warning(f"Failed to initialize LangChain LLM client: {e}")
         app.state.langchain_llm_client = None
 
-    # Initialize MCP Tool Manager (new LangChain-based approach)
-    mcp_tool_config_path = Path("/config/mcp_config.yaml")
-    if not mcp_tool_config_path.exists():
-        mcp_tool_config_path = (
-            Path(__file__).parent.parent.parent.parent / "mcp_config.yaml"
-        )
+    # Get MCP config path from environment variable or default locations
+    mcp_config_path = get_mcp_config_path()
+    logger.info(f"Using MCP configuration from: {mcp_config_path}")
 
+    # Initialize MCP Tool Manager (new LangChain-based approach)
     try:
-        logger.info(f"Loading MCP tool configuration from {mcp_tool_config_path}")
-        config_loader = MCPToolConfigLoader(config_path=mcp_tool_config_path)
+        logger.info(f"Loading MCP tool configuration from {mcp_config_path}")
+        config_loader = MCPToolConfigLoader(config_path=mcp_config_path)
         mcp_tool_config = config_loader.load_config()
 
         if config_loader.validate_config(mcp_tool_config):
@@ -71,16 +71,9 @@ async def startup_event():
         logger.warning(f"Failed to initialize MCP Tool Manager: {e}", exc_info=True)
         app.state.mcp_tool_manager = None
 
-    # TODO: Pass the mcp_server.yaml as a command line argument to the orchestrator instead of copying a file
     # Keep legacy MCP Connection Manager for backward compatibility (will be removed later)
-    legacy_config_path = Path("/config/mcp_config.yaml")
-    if not legacy_config_path.exists():
-        legacy_config_path = (
-            Path(__file__).parent.parent.parent.parent.parent / "mcp_config.yaml"
-        )
-
     try:
-        mcp_config_service = MCPConfigService(config_path=legacy_config_path)
+        mcp_config_service = MCPConfigService(config_path=mcp_config_path)
         mcp_config = mcp_config_service.load_config()
         app.state.mcp_connection_manager = MCPConnectionManager(mcp_config)
         await app.state.mcp_connection_manager.connect_to_servers()
