@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "sre-orchestrator-cli"
+version = "0.1.0"
+description = "Interactive CLI for SRE Orchestrator incident investigation"
+authors = ["SRE Team"]
+readme = "README.md"
+packages = [{include = "sre_orchestrator_cli", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+httpx = "^0.27.0"
+rich = "^13.7.0"
+click = "^8.1.7"
+pyyaml = "^6.0.1"
+prompt-toolkit = "^3.0.43"
+
+[tool.poetry.scripts]
+sre-orchestrator = "sre_orchestrator_cli.main:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
