@@ -167,20 +167,61 @@ class IncidentRepository:
                 f"root_cause={result['root_cause']}, confidence={result['confidence']}"
             )
         else:
-            # Investigation failed
+            # Investigation failed - preserve partial results
             incident.status = "failed"
             incident.error_message = result.get("error", "Unknown error")
             incident.completed_at = datetime.utcnow()
+
+            # Preserve partial investigation results even on failure
+            partial_evidence = {}
+
+            # Store any tool calls that were executed before failure
+            if result.get("tool_calls"):
+                partial_evidence["tool_calls"] = result["tool_calls"]
+                logger.info(
+                    f"Preserved {len(result['tool_calls'])} tool call(s) from failed investigation"
+                )
+
+            # Store any evidence collected before failure
+            if result.get("evidence"):
+                partial_evidence["collected_evidence"] = result["evidence"]
+                logger.info(
+                    f"Preserved {len(result['evidence'])} evidence item(s) from failed investigation"
+                )
+
+            # Store any partial reasoning
+            if result.get("reasoning"):
+                partial_evidence["partial_reasoning"] = result["reasoning"]
+
+            # Store partial root cause if available
+            if result.get("root_cause"):
+                incident.suggested_root_cause = result["root_cause"]
+                incident.confidence_score = result.get("confidence", "low")
+                partial_evidence["partial_root_cause"] = result["root_cause"]
+                logger.info(
+                    f"Preserved partial root cause from failed investigation: {result['root_cause']}"
+                )
+
+            if partial_evidence:
+                incident.evidence = partial_evidence
 
             incident.investigation_steps.append(
                 InvestigationStep(
                     step_name="investigation_failed",
                     status="failed",
-                    details={"error": result.get("error", "Unknown error")}
+                    details={
+                        "error": result.get("error", "Unknown error"),
+                        "partial_results_preserved": bool(partial_evidence),
+                        "tool_calls_count": len(result.get("tool_calls", [])),
+                        "evidence_count": len(result.get("evidence", []))
+                    }
                 )
             )
 
-            logger.error(f"Investigation failed for incident {incident_id}: {result.get('error')}")
+            logger.error(
+                f"Investigation failed for incident {incident_id}: {result.get('error')}. "
+                f"Partial results preserved: {bool(partial_evidence)}"
+            )
 
     def get_by_id(self, incident_id: UUID) -> Optional[Incident]:
         """

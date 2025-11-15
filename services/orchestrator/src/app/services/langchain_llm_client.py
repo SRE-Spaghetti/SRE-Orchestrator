@@ -14,6 +14,14 @@ from langchain_openai import ChatOpenAI
 logger = logging.getLogger(__name__)
 
 
+# Common retryable exceptions for LLM calls
+RETRYABLE_LLM_EXCEPTIONS = (
+    ConnectionError,
+    TimeoutError,
+    # Add other transient errors as needed
+)
+
+
 # Structured Output Models
 class ExtractedEntities(BaseModel):
     """Structured model for entities extracted from incident descriptions."""
@@ -125,7 +133,7 @@ class LangChainLLMClient:
             f"at {config.base_url}"
         )
 
-    def extract_entities(self, description: str) -> Optional[ExtractedEntities]:
+    def extract_entities(self, description: str, max_retries: int = 3) -> Optional[ExtractedEntities]:
         """
         Extract structured entities from an incident description.
 
@@ -135,16 +143,22 @@ class LangChainLLMClient:
 
         Args:
             description: The incident description text
+            max_retries: Maximum number of retry attempts for transient failures
 
         Returns:
             ExtractedEntities object with parsed information, or None if extraction fails
         """
-        try:
-            # Create a structured output LLM
-            structured_llm = self.llm.with_structured_output(ExtractedEntities)
+        import time
 
-            # Create the extraction prompt
-            prompt = f"""You are an expert SRE assistant. Analyze the following incident description and extract key information.
+        last_exception = None
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Create a structured output LLM
+                structured_llm = self.llm.with_structured_output(ExtractedEntities)
+
+                # Create the extraction prompt
+                prompt = f"""You are an expert SRE assistant. Analyze the following incident description and extract key information.
 
 Incident Description: {description}
 
@@ -156,20 +170,43 @@ Extract the following information:
 
 If a field cannot be determined, use null for optional fields."""
 
-            # Invoke the LLM with structured output
-            result = structured_llm.invoke(prompt)
+                # Invoke the LLM with structured output
+                result = structured_llm.invoke(prompt)
 
-            logger.info(f"Successfully extracted entities: {result}")
-            return result
+                if attempt > 1:
+                    logger.info(f"Successfully extracted entities after {attempt} attempt(s): {result}")
+                else:
+                    logger.info(f"Successfully extracted entities: {result}")
 
-        except Exception as e:
-            logger.error(f"Error extracting entities with LangChain LLM: {e}", exc_info=True)
-            return None
+                return result
+
+            except RETRYABLE_LLM_EXCEPTIONS as e:
+                last_exception = e
+                if attempt < max_retries:
+                    delay = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Retryable error extracting entities (attempt {attempt}/{max_retries}): {e}. "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(
+                        f"Error extracting entities after {max_retries} attempts: {e}",
+                        exc_info=True
+                    )
+
+            except Exception as e:
+                # Non-retryable exception
+                logger.error(f"Non-retryable error extracting entities: {e}", exc_info=True)
+                return None
+
+        return None
 
     def analyze_evidence(
         self,
         evidence: Dict[str, Any],
-        knowledge_graph: Optional[Dict[str, Any]] = None
+        knowledge_graph: Optional[Dict[str, Any]] = None,
+        max_retries: int = 3
     ) -> Optional[AnalysisResult]:
         """
         Analyze collected evidence and suggest root causes.
@@ -180,25 +217,31 @@ If a field cannot be determined, use null for optional fields."""
         Args:
             evidence: Dictionary containing collected evidence from various sources
             knowledge_graph: Optional knowledge graph for additional context
+            max_retries: Maximum number of retry attempts for transient failures
 
         Returns:
             AnalysisResult object with root cause analysis, or None if analysis fails
         """
-        try:
-            # Create a structured output LLM
-            structured_llm = self.llm.with_structured_output(AnalysisResult)
+        import time
 
-            # Build the analysis prompt
-            prompt = f"""You are an expert SRE assistant analyzing a production incident.
+        last_exception = None
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Create a structured output LLM
+                structured_llm = self.llm.with_structured_output(AnalysisResult)
+
+                # Build the analysis prompt
+                prompt = f"""You are an expert SRE assistant analyzing a production incident.
 
 Evidence collected:
 {self._format_evidence(evidence)}
 """
 
-            if knowledge_graph:
-                prompt += f"\nKnowledge Graph Context:\n{self._format_knowledge_graph(knowledge_graph)}\n"
+                if knowledge_graph:
+                    prompt += f"\nKnowledge Graph Context:\n{self._format_knowledge_graph(knowledge_graph)}\n"
 
-            prompt += """
+                prompt += """
 Based on the evidence above, determine:
 1. The root cause of the incident
 2. Your confidence level (high, medium, or low)
@@ -207,15 +250,43 @@ Based on the evidence above, determine:
 
 Provide a thorough analysis based on the available evidence."""
 
-            # Invoke the LLM with structured output
-            result = structured_llm.invoke(prompt)
+                # Invoke the LLM with structured output
+                result = structured_llm.invoke(prompt)
 
-            logger.info(f"Successfully analyzed evidence: root_cause={result.root_cause}, confidence={result.confidence}")
-            return result
+                if attempt > 1:
+                    logger.info(
+                        f"Successfully analyzed evidence after {attempt} attempt(s): "
+                        f"root_cause={result.root_cause}, confidence={result.confidence}"
+                    )
+                else:
+                    logger.info(
+                        f"Successfully analyzed evidence: "
+                        f"root_cause={result.root_cause}, confidence={result.confidence}"
+                    )
 
-        except Exception as e:
-            logger.error(f"Error analyzing evidence with LangChain LLM: {e}", exc_info=True)
-            return None
+                return result
+
+            except RETRYABLE_LLM_EXCEPTIONS as e:
+                last_exception = e
+                if attempt < max_retries:
+                    delay = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Retryable error analyzing evidence (attempt {attempt}/{max_retries}): {e}. "
+                        f"Retrying in {delay}s..."
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error(
+                        f"Error analyzing evidence after {max_retries} attempts: {e}",
+                        exc_info=True
+                    )
+
+            except Exception as e:
+                # Non-retryable exception
+                logger.error(f"Non-retryable error analyzing evidence: {e}", exc_info=True)
+                return None
+
+        return None
 
     def generate_investigation_plan(
         self,

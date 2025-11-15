@@ -8,13 +8,30 @@ for autonomous incident investigation using LangGraph's ReAct pattern.
 import logging
 import os
 import re
+import uuid
 from typing import Any, Dict, List, Optional, Literal
 from datetime import datetime
 
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 
+from .retry_utils import retry_async, RetryConfig
+
 logger = logging.getLogger(__name__)
+
+
+def generate_correlation_id() -> str:
+    """Generate a unique correlation ID for tracing."""
+    return str(uuid.uuid4())
+
+
+# Default retry configuration for LLM calls
+DEFAULT_LLM_RETRY_CONFIG = RetryConfig(
+    max_attempts=3,
+    initial_delay=1.0,
+    max_delay=10.0,
+    exponential_base=2.0
+)
 
 
 # System prompt for the SRE investigation agent
@@ -43,7 +60,7 @@ RECOMMENDATIONS: [Actionable recommendations]
 Be thorough but concise. Focus on the most relevant information."""
 
 
-async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str, Any]):
+async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
     """
     Create a ReAct agent for incident investigation.
 
@@ -58,6 +75,7 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
                    - model_name: Model name (default: "gpt-4")
                    - temperature: Temperature setting (default: 0.7)
                    - max_tokens: Max tokens (default: 2000)
+        correlation_id: Optional correlation ID for tracing
 
     Returns:
         Compiled LangGraph agent ready for investigation
@@ -88,8 +106,13 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
         )
 
         logger.info(
-            f"Creating investigation agent with model {model_name} "
-            f"and {len(mcp_tools)} tool(s)"
+            "Creating investigation agent",
+            extra={
+                "correlation_id": correlation_id,
+                "model": model_name,
+                "tool_count": len(mcp_tools),
+                "tool_names": [tool.name for tool in mcp_tools] if mcp_tools else []
+            }
         )
 
         # Create ReAct agent with tools and system prompt
@@ -99,11 +122,18 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
             state_modifier=INVESTIGATION_SYSTEM_PROMPT
         )
 
-        logger.info("Investigation agent created successfully")
+        logger.info(
+            "Investigation agent created successfully",
+            extra={"correlation_id": correlation_id}
+        )
         return agent
 
     except Exception as e:
-        logger.error(f"Failed to create investigation agent: {e}", exc_info=True)
+        logger.error(
+            "Failed to create investigation agent",
+            extra={"correlation_id": correlation_id, "error": str(e)},
+            exc_info=True
+        )
         raise
 
 
@@ -111,7 +141,8 @@ async def investigate_incident(
     agent: Any,
     incident_id: str,
     description: str,
-    update_callback: Optional[callable] = None
+    update_callback: Optional[callable] = None,
+    correlation_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Execute incident investigation using the ReAct agent.
@@ -125,6 +156,7 @@ async def investigate_incident(
         description: The incident description to investigate
         update_callback: Optional callback function to update incident status
                         during investigation. Should accept (incident_id, status, details)
+        correlation_id: Optional correlation ID for tracing
 
     Returns:
         Dictionary containing:
@@ -135,32 +167,77 @@ async def investigate_incident(
             - tool_calls: List of tools used during investigation
             - status: Investigation status (completed/failed)
             - error: Error message if investigation failed
+            - correlation_id: Correlation ID for tracing
 
     Raises:
         Exception: If agent execution fails critically
     """
+    # Generate correlation ID if not provided
+    if not correlation_id:
+        correlation_id = generate_correlation_id()
+
+    start_time = datetime.utcnow()
+
     try:
-        logger.info(f"Starting investigation for incident {incident_id}")
+        logger.info(
+            "Starting incident investigation",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "description_length": len(description),
+                "timestamp": start_time.isoformat()
+            }
+        )
 
         # Update status to investigating
         if update_callback:
             await update_callback(incident_id, "investigating", {
                 "message": "Investigation started",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": start_time.isoformat(),
+                "correlation_id": correlation_id
             })
 
         # Invoke the agent with the incident description
-        result = await agent.ainvoke({
-            "messages": [
-                ("system", "Investigate this incident and provide root cause analysis."),
-                ("human", description)
-            ]
-        })
+        logger.info(
+            "Invoking agent for investigation",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id
+            }
+        )
 
-        logger.info(f"Agent investigation completed for incident {incident_id}")
+        # Wrap agent invocation with retry logic
+        async def invoke_agent():
+            return await agent.ainvoke({
+                "messages": [
+                    ("system", "Investigate this incident and provide root cause analysis."),
+                    ("human", description)
+                ]
+            })
+
+        result = await retry_async(
+            invoke_agent,
+            DEFAULT_LLM_RETRY_CONFIG,
+            correlation_id
+        )
+
+        end_time = datetime.utcnow()
+        duration_seconds = (end_time - start_time).total_seconds()
+
+        logger.info(
+            "Agent investigation completed",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "duration_seconds": duration_seconds
+            }
+        )
 
         # Extract messages from the result
         messages = result.get("messages", [])
+
+        # Log agent reasoning steps
+        _log_agent_reasoning_steps(messages, correlation_id, incident_id)
 
         # Extract the final response (last message from the agent)
         final_message = None
@@ -180,16 +257,31 @@ async def investigate_incident(
         evidence = extract_evidence(messages)
         recommendations = extract_recommendations(final_content)
 
-        # Extract tool calls from messages
+        # Extract and log tool calls from messages
         tool_calls = []
         for msg in messages:
             if hasattr(msg, "tool_calls") and msg.tool_calls:
                 for tool_call in msg.tool_calls:
-                    tool_calls.append({
+                    tool_info = {
                         "tool": tool_call.get("name", "unknown"),
                         "args": tool_call.get("args", {}),
                         "timestamp": datetime.utcnow().isoformat()
-                    })
+                    }
+                    tool_calls.append(tool_info)
+
+                    # Log tool invocation
+                    logger.info(
+                        "Agent tool invocation",
+                        extra={
+                            "correlation_id": correlation_id,
+                            "incident_id": incident_id,
+                            "tool_name": tool_info["tool"],
+                            "tool_args": tool_info["args"]
+                        }
+                    )
+
+        # Log tool execution results
+        _log_tool_execution_results(messages, correlation_id, incident_id)
 
         investigation_result = {
             "root_cause": root_cause,
@@ -198,12 +290,21 @@ async def investigate_incident(
             "reasoning": final_content,
             "recommendations": recommendations,
             "tool_calls": tool_calls,
-            "status": "completed"
+            "status": "completed",
+            "correlation_id": correlation_id,
+            "duration_seconds": duration_seconds
         }
 
         logger.info(
-            f"Investigation completed for incident {incident_id}: "
-            f"root_cause={root_cause}, confidence={confidence}"
+            "Investigation completed successfully",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "root_cause": root_cause,
+                "confidence": confidence,
+                "tool_count": len(tool_calls),
+                "duration_seconds": duration_seconds
+            }
         )
 
         # Update status to completed
@@ -213,8 +314,18 @@ async def investigate_incident(
         return investigation_result
 
     except Exception as e:
+        end_time = datetime.utcnow()
+        duration_seconds = (end_time - start_time).total_seconds()
+
         logger.error(
-            f"Investigation failed for incident {incident_id}: {e}",
+            "Investigation failed",
+            extra={
+                "correlation_id": correlation_id,
+                "incident_id": incident_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "duration_seconds": duration_seconds
+            },
             exc_info=True
         )
 
@@ -226,17 +337,73 @@ async def investigate_incident(
             "recommendations": [],
             "tool_calls": [],
             "status": "failed",
-            "error": str(e)
+            "error": str(e),
+            "correlation_id": correlation_id,
+            "duration_seconds": duration_seconds
         }
 
         # Update status to failed
         if update_callback:
             await update_callback(incident_id, "failed", {
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": end_time.isoformat(),
+                "correlation_id": correlation_id
             })
 
         return error_result
+
+
+def _log_agent_reasoning_steps(messages: List[Any], correlation_id: str, incident_id: str):
+    """
+    Log agent reasoning steps from the conversation messages.
+
+    Args:
+        messages: List of messages from the agent conversation
+        correlation_id: Correlation ID for tracing
+        incident_id: Incident ID
+    """
+    step_number = 0
+    for msg in messages:
+        if hasattr(msg, "content") and msg.content:
+            # Check if this is an agent reasoning message (not a tool call or system message)
+            if hasattr(msg, "type") and msg.type == "ai":
+                step_number += 1
+                logger.info(
+                    "Agent reasoning step",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "incident_id": incident_id,
+                        "step_number": step_number,
+                        "content_preview": msg.content[:200] if len(msg.content) > 200 else msg.content
+                    }
+                )
+
+
+def _log_tool_execution_results(messages: List[Any], correlation_id: str, incident_id: str):
+    """
+    Log tool execution results from the conversation messages.
+
+    Args:
+        messages: List of messages from the agent conversation
+        correlation_id: Correlation ID for tracing
+        incident_id: Incident ID
+    """
+    for msg in messages:
+        # Check if this is a tool response message
+        if hasattr(msg, "type") and msg.type == "tool":
+            tool_name = getattr(msg, "name", "unknown")
+            content = getattr(msg, "content", "")
+
+            logger.info(
+                "Tool execution result",
+                extra={
+                    "correlation_id": correlation_id,
+                    "incident_id": incident_id,
+                    "tool_name": tool_name,
+                    "result_length": len(str(content)),
+                    "result_preview": str(content)[:200] if len(str(content)) > 200 else str(content)
+                }
+            )
 
 
 def extract_root_cause(content: str) -> Optional[str]:

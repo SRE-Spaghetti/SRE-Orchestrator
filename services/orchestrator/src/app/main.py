@@ -113,38 +113,139 @@ async def shutdown_event():
 async def read_health():
     """
     Checks the health of the application and MCP connection status.
+
+    Returns detailed health information including:
+    - Overall application status
+    - LangChain LLM client status
+    - MCP tool availability
+    - Agent initialization status
     """
-    health_status = {"status": "ok"}
+    from datetime import datetime
+
+    health_status = {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": {}
+    }
+
+    # Track if any component is unhealthy
+    all_healthy = True
 
     # Check LangChain LLM client status
     if hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client:
-        health_status["langchain_llm"] = {
-            "status": "initialized",
-            "model": app.state.langchain_llm_client.config.model_name
-        }
+        try:
+            health_status["components"]["langchain_llm"] = {
+                "status": "healthy",
+                "model": app.state.langchain_llm_client.config.model_name,
+                "base_url": app.state.langchain_llm_client.config.base_url,
+                "temperature": app.state.langchain_llm_client.config.temperature,
+                "max_tokens": app.state.langchain_llm_client.config.max_tokens
+            }
+        except Exception as e:
+            health_status["components"]["langchain_llm"] = {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+            all_healthy = False
     else:
-        health_status["langchain_llm"] = {"status": "not initialized"}
+        health_status["components"]["langchain_llm"] = {
+            "status": "not_initialized",
+            "message": "LangChain LLM client not initialized"
+        }
+        all_healthy = False
 
     # Check MCP Tool Manager status (new LangChain-based approach)
     if hasattr(app.state, "mcp_tool_manager") and app.state.mcp_tool_manager:
-        if app.state.mcp_tool_manager.is_initialized():
-            health_status["mcp_tools"] = {
-                "status": "initialized",
-                "tool_count": app.state.mcp_tool_manager.get_tool_count(),
-                "tools": app.state.mcp_tool_manager.get_tool_names()
+        try:
+            if app.state.mcp_tool_manager.is_initialized():
+                tool_count = app.state.mcp_tool_manager.get_tool_count()
+                tool_names = app.state.mcp_tool_manager.get_tool_names()
+
+                health_status["components"]["mcp_tools"] = {
+                    "status": "healthy" if tool_count > 0 else "degraded",
+                    "tool_count": tool_count,
+                    "tools": tool_names,
+                    "message": f"{tool_count} tool(s) available" if tool_count > 0 else "No tools available"
+                }
+
+                if tool_count == 0:
+                    all_healthy = False
+            else:
+                health_status["components"]["mcp_tools"] = {
+                    "status": "not_initialized",
+                    "message": "MCP Tool Manager not initialized"
+                }
+                all_healthy = False
+        except Exception as e:
+            health_status["components"]["mcp_tools"] = {
+                "status": "unhealthy",
+                "error": str(e)
             }
-        else:
-            health_status["mcp_tools"] = {"status": "not initialized"}
+            all_healthy = False
     else:
-        health_status["mcp_tools"] = {"status": "not initialized"}
+        health_status["components"]["mcp_tools"] = {
+            "status": "not_initialized",
+            "message": "MCP Tool Manager not available"
+        }
+        all_healthy = False
+
+    # Check agent initialization status
+    # Agent is created on-demand, so we check if prerequisites are available
+    agent_prerequisites_met = (
+        hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client and
+        hasattr(app.state, "mcp_tool_manager") and app.state.mcp_tool_manager and
+        app.state.mcp_tool_manager.is_initialized()
+    )
+
+    if agent_prerequisites_met:
+        health_status["components"]["investigation_agent"] = {
+            "status": "ready",
+            "message": "Agent can be created on-demand",
+            "prerequisites": {
+                "llm_client": "available",
+                "mcp_tools": "available"
+            }
+        }
+    else:
+        missing_prerequisites = []
+        if not (hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client):
+            missing_prerequisites.append("llm_client")
+        if not (hasattr(app.state, "mcp_tool_manager") and app.state.mcp_tool_manager and app.state.mcp_tool_manager.is_initialized()):
+            missing_prerequisites.append("mcp_tools")
+
+        health_status["components"]["investigation_agent"] = {
+            "status": "not_ready",
+            "message": "Agent prerequisites not met",
+            "missing_prerequisites": missing_prerequisites
+        }
+        all_healthy = False
 
     # Check legacy MCP connection status (will be removed later)
     if (
         hasattr(app.state, "mcp_connection_manager")
         and app.state.mcp_connection_manager
     ):
-        mcp_statuses = await app.state.mcp_connection_manager.get_connection_statuses()
-        health_status["mcp_connections"] = mcp_statuses
+        try:
+            mcp_statuses = await app.state.mcp_connection_manager.get_connection_statuses()
+            health_status["components"]["mcp_connections_legacy"] = {
+                "status": "healthy",
+                "connections": mcp_statuses,
+                "message": "Legacy MCP connections (deprecated)"
+            }
+        except Exception as e:
+            health_status["components"]["mcp_connections_legacy"] = {
+                "status": "unhealthy",
+                "error": str(e),
+                "message": "Legacy MCP connections (deprecated)"
+            }
     else:
-        health_status["mcp_connections"] = {"status": "not initialized"}
+        health_status["components"]["mcp_connections_legacy"] = {
+            "status": "not_initialized",
+            "message": "Legacy MCP connections not available (deprecated)"
+        }
+
+    # Set overall status based on component health
+    if not all_healthy:
+        health_status["status"] = "degraded"
+
     return health_status
