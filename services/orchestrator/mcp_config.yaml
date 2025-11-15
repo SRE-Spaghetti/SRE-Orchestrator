@@ -1,0 +1,42 @@
+# MCP Server Configuration
+# This file configures the MCP servers that the orchestrator will connect to.
+# The format is compatible with MultiServerMCPClient from langchain-mcp-adapters.
+
+# Configuration Format:
+# Each server is defined with a unique name as the key, and configuration as the value.
+#
+# Supported transport types:
+# 1. streamable_http: For HTTP-based MCP servers
+#    Required fields: url, transport
+#    Optional fields: headers (for authentication)
+#
+# 2. stdio: For local MCP servers running as processes
+#    Required fields: command, args, transport
+#    Optional fields: env (environment variables)
+
+# Example: Kubernetes MCP Server (HTTP transport)
+# Uncomment and configure when you have a Kubernetes MCP server running
+# kubernetes:
+#   url: "http://kubernetes-mcp-server:8080/mcp"
+#   transport: "streamable_http"
+#   headers:
+#     Authorization: "Bearer YOUR_TOKEN_HERE"
+
+# Example: Local Python MCP Server (stdio transport)
+# Uncomment and configure to run a local MCP server
+# local-tools:
+#   command: "python"
+#   args:
+#     - "/path/to/your/mcp_server.py"
+#   transport: "stdio"
+#   env:
+#     LOG_LEVEL: "INFO"
+
+# Example: Prometheus MCP Server (HTTP transport)
+# prometheus:
+#   url: "http://prometheus-mcp-server:9090/mcp"
+#   transport: "streamable_http"
+
+# Default configuration (empty - no servers configured)
+# Add your MCP server configurations below:
+{}
