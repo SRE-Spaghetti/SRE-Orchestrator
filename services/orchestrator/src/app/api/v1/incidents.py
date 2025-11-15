@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, status, HTTPException, Request, BackgroundTasks
 from app.models.incidents import NewIncidentRequest, NewIncidentResponse, Incident
 from app.core.incident_repository import IncidentRepository, get_incident_repository
 from uuid import UUID
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 async def create_incident(
     fastapi_req: Request,
     request: NewIncidentRequest,
+    background_tasks: BackgroundTasks,
     repo: IncidentRepository = Depends(get_incident_repository),
 ):
     """
@@ -52,14 +53,19 @@ async def create_incident(
             detail="LLM not configured. Investigation cannot proceed."
         )
 
-    # Create incident and start investigation
+    # Create incident synchronously with pending status
     try:
-        incident = await repo.create(
-            description=request.description,
-            mcp_tools=mcp_tools,
-            llm_config=llm_config,
+        incident = repo.create_incident_sync(description=request.description)
+
+        # Schedule background investigation
+        background_tasks.add_task(
+            repo.investigate_incident_async,
+            incident.id,
+            mcp_tools,
+            llm_config
         )
-        return NewIncidentResponse(incident_id=incident.id)
+
+        return NewIncidentResponse(incident_id=incident.id, status=incident.status)
     except Exception as e:
         logger.error(f"Failed to create incident: {e}", exc_info=True)
         raise HTTPException(
