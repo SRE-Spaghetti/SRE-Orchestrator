@@ -24,35 +24,40 @@ The SRE Orchestrator will be a microservices-based system designed to automate i
 
 ### High Level Overview
 
-The system will follow a Cloud Native **Microservices** architecture, as specified in the PRD, to promote scalability and resilience. All code will be managed in a **Monorepo** to simplify dependency management and maintain consistency across services. The primary data flow begins with an SRE triggering an investigation via a REST API call to the Orchestrator. The Orchestrator then uses an LLM to parse the request and delegates data collection tasks to the appropriate agent (initially, the Kubernetes Agent). The agent gathers data from the cluster and returns it to the Orchestrator, which then uses a correlation engine to analyze the findings and generate a root cause suggestion.
+The system follows a Cloud Native architecture with a single Orchestrator service that leverages LangGraph for intelligent incident investigation. All code is managed in a **Monorepo** to simplify dependency management and maintain consistency. The primary data flow begins with an SRE triggering an investigation via a REST API call to the Orchestrator. The Orchestrator uses a LangGraph ReAct agent powered by LangChain to autonomously investigate incidents. The agent uses MCP (Model Context Protocol) tools to gather data from external systems like Kubernetes clusters. The LLM-powered agent reasons about the evidence, determines which tools to use, and generates root cause suggestions with supporting evidence.
 
 ### High Level Project Diagram
 
 ```mermaid
 graph TD
-    subgraph "SRE Orchestrator System"
-        A[Orchestrator Service]
-        B[Kubernetes Agent]
-        C[Knowledge Grap: YAML]
-        D[Correlation Engine]
+    subgraph "User Interfaces"
+        CLI[CLI Client]
+        API[REST API Clients]
     end
 
-    subgraph "External Systems"
-        E[SRE/User]
-        F[Kubernetes Cluster]
-        G[Cloud LLM]
+    subgraph "Orchestrator Service"
+        FastAPI[FastAPI Server]
+        LangGraph[LangGraph ReAct Agent]
+        LangChain[LangChain LLM Client]
+        MCPMgr[MCP Tool Manager]
+        IncRepo[Incident Repository]
     end
 
-    E -- 1. POST /api/v1/incidents --> A
-    A -- 2. Parse description --> G
-    A -- 3. Request pod data --> B
-    B -- 4. Get pod status/logs --> F
-    F -- 5. Return data --> B
-    B -- 6. Return data --> A
-    A -- 7. Correlate data --> D
-    C -- 8. Provide context --> D
-    D -- 9. Suggest root cause --> A
-    A -- 10. GET /api/v1/incidents/{id} --> E
+    subgraph "External Services"
+        LLM[OpenAI-Compatible LLM]
+        K8sMCP[Kubernetes MCP Server]
+        OtherMCP[Other MCP Servers]
+    end
+
+    CLI -->|HTTP| FastAPI
+    API -->|HTTP| FastAPI
+    FastAPI --> LangGraph
+    LangGraph --> LangChain
+    LangGraph --> MCPMgr
+    LangGraph --> IncRepo
+    LangChain -->|API Calls| LLM
+    MCPMgr -->|MCP Protocol| K8sMCP
+    MCPMgr -->|MCP Protocol| OtherMCP
 ```
 
 ### Architectural and Design Patterns
@@ -77,14 +82,16 @@ graph TD
 
 | Category | Technology | Version | Purpose | Rationale |
 | :--- | :--- | :--- | :--- | :--- |
-| **Language** | Python | 3.12.11 | Primary development language | Modern, robust, with excellent support for AI/ML and web frameworks. Specified in PRD. |
-| **Framework (API)** | FastAPI | 0.116.1 | High-performance web framework for building REST APIs | Offers modern Python features, automatic docs, and dependency injection. Specified in PRD. |
-| **Framework (Agent)**| LangGraph | 0.6.7 | Framework for building stateful, multi-actor agent applications | Provides a robust way to create and coordinate AI agents. Specified in PRD. |
-| **Dependency Mgt** | Poetry | 2.2.2 | Dependency management and packaging | Simplifies dependency resolution and ensures reproducible builds. Specified in PRD. |
-| **Containerization**| Docker | 28.4.0 | Container runtime and tooling | Standard for containerizing applications for consistent deployment. Specified in PRD. |
+| **Language** | Python | 3.12.11 | Primary development language | Modern, robust, with excellent support for AI/ML and web frameworks. |
+| **Framework (API)** | FastAPI | 0.116.1 | High-performance web framework for building REST APIs | Offers modern Python features, automatic docs, and dependency injection. |
+| **Framework (Agent)**| LangGraph | 0.2.66 | Framework for building stateful, multi-actor agent applications | Provides ReAct agent pattern for autonomous investigation workflows. |
+| **LLM Framework** | LangChain | 0.3.18 | Framework for LLM application development | Unified interface for multiple LLM providers with structured output support. |
+| **MCP Integration** | langchain-mcp-adapters | 0.1.2 | MCP tool integration for LangChain | Enables dynamic tool discovery and execution from MCP servers. |
+| **Dependency Mgt** | Poetry | 2.2.2 | Dependency management and packaging | Simplifies dependency resolution and ensures reproducible builds. |
+| **Containerization**| Docker | 28.4.0 | Container runtime and tooling | Standard for containerizing applications for consistent deployment. |
 | **Orchestration** | Kubernetes | 1.34.1 | Container orchestration platform | Industry standard for deploying and managing containerized applications at scale. |
-| **Deployment** | Helm | 3.19.0 | Package manager for Kubernetes | Simplifies the deployment and management of applications on Kubernetes. Specified in PRD. |
-| **LLM Provider** | TBD | TBD | For natural language understanding and generation | A specific provider will be chosen based on performance, cost, and features. |
+| **Deployment** | Helm | 3.19.0 | Package manager for Kubernetes | Simplifies the deployment and management of applications on Kubernetes. |
+| **LLM Provider** | OpenAI-Compatible | Various | For natural language understanding and generation | Supports OpenAI, Gemini (via OpenAI proxy), and local LLMs. |
 | **Data Storage (MVP)| In-Memory Dict | N/A | Temporary storage for incident data | Simple, no-dependency solution for the MVP, to be replaced later. |
 | **Knowledge Graph**| YAML File | N/A | Static representation of system topology | Simple, human-readable format for the initial knowledge graph implementation. |
 
@@ -97,13 +104,15 @@ graph TD
 **Key Attributes:**
 - `id`: `string` (UUID) - Unique identifier for the incident.
 - `description`: `string` - The initial problem description by the user.
-- `status`: `string` - The current state of the investigation (e.g., `pending`, `running`, `completed`, `failed`).
+- `status`: `string` - The current state of the investigation (e.g., `pending`, `investigating`, `completed`, `failed`).
 - `created_at`: `datetime` - Timestamp of when the incident was created.
 - `completed_at`: `datetime` - Timestamp of when the investigation was completed.
-- `evidence`: `dict` - A dictionary to store all collected evidence, such as pod logs and status.
+- `evidence`: `dict` - A dictionary to store all collected evidence from MCP tools.
 - `extracted_entities`: `dict` - Key entities extracted from the description by the LLM (e.g., pod name, namespace).
-- `suggested_root_cause`: `string` - The final conclusion from the correlation engine.
+- `suggested_root_cause`: `string` - The final conclusion from the LangGraph agent.
 - `confidence_score`: `string` - The confidence level of the suggested root cause (e.g., `high`, `medium`, `low`).
+- `investigation_steps`: `list` - A list of investigation steps performed by the agent.
+- `error_message`: `string` - Error message if the investigation failed.
 
 **Relationships:**
 - This is the root model and does not have explicit relationships to other models in the MVP.
@@ -112,99 +121,165 @@ graph TD
 
 ### Orchestrator Service
 
-**Responsibility:** The central brain of the system. It manages the lifecycle of an incident investigation, coordinates with other agents, and exposes the public-facing REST API.
+**Responsibility:** The central service that manages incident investigations using a LangGraph ReAct agent. It exposes the public-facing REST API and coordinates autonomous investigation workflows.
 
 **Key Interfaces:**
 - **Public REST API:**
     - `POST /api/v1/incidents`: Creates a new incident investigation.
     - `GET /api/v1/incidents/{id}`: Retrieves the status and results of an investigation.
-- **Internal REST API (Client):**
-    - Calls the Kubernetes Agent's API to request pod data.
+    - `GET /health`: Health check endpoint with MCP tool status.
 - **External API (Client):**
-    - Calls the Cloud LLM's API to parse incident descriptions.
+    - Calls OpenAI-compatible LLM API for agent reasoning.
+    - Connects to MCP servers for tool execution.
 
 **Dependencies:**
-- **Kubernetes Agent:** For retrieving data from the Kubernetes cluster.
-- **Cloud LLM:** For natural language processing.
+- **OpenAI-Compatible LLM:** For agent reasoning and decision-making.
+- **MCP Servers:** For data collection tools (Kubernetes, Prometheus, etc.).
 - **Knowledge Graph (YAML file):** For contextual information about the system.
 
 **Technology Stack:**
-- Python 3.12.4
-- FastAPI 0.111.0
-- LangGraph 0.0.53
-- Poetry 1.8.2
+- Python 3.12.11
+- FastAPI 0.116.1
+- LangGraph 0.2.66
+- LangChain 0.3.18
+- langchain-mcp-adapters 0.1.2
+- Poetry 2.2.2
 
-### Kubernetes Agent
+### CLI Application
 
-**Responsibility:** A specialized agent responsible for all interactions with the Kubernetes API. It retrieves pod status, logs, and configuration details on behalf of the Orchestrator.
+**Responsibility:** Provides an interactive command-line interface for SREs to investigate incidents using natural language.
 
 **Key Interfaces:**
-- **Internal REST API:**
-    - `GET /api/v1/pods/{namespace}/{name}`: Retrieves pod details.
-    - `GET /api/v1/pods/{namespace}/{name}/logs`: Retrieves pod logs.
-    - `GET /health`: Health check endpoint.
+- **Commands:**
+    - `chat`: Interactive REPL-style interface
+    - `investigate`: One-shot investigation
+    - `list`: List recent incidents
+    - `show`: View incident details
+    - `config`: Manage configuration
 
 **Dependencies:**
-- **Kubernetes API:** The agent's sole purpose is to interact with this API.
+- **Orchestrator Service:** Communicates via REST API
 
 **Technology Stack:**
-- Python 3.12.4
-- FastAPI 0.111.0
-- `kubernetes` Python client library
-- Poetry 1.8.2
+- Python 3.12.11
+- Click/Typer for CLI framework
+- Rich for terminal formatting
+- Poetry 2.2.2
 
 ### Component Diagram
 
 ```mermaid
 graph TD
-    subgraph "User Facing"
-        A[Public REST API]
+    subgraph "User Interfaces"
+        CLI[CLI Application]
+        API[REST API Clients]
     end
 
     subgraph "Orchestrator Service"
-        B[Incident Management]
-        C[Correlation Engine]
-        D[LLM Client]
-        E[K8s Agent Client]
-    end
-
-    subgraph "Kubernetes Agent"
-        F[Internal REST API]
-        G[Kubernetes API Client]
+        FastAPI[FastAPI Endpoints]
+        IncRepo[Incident Repository]
+        Agent[LangGraph ReAct Agent]
+        LLMClient[LangChain LLM Client]
+        MCPMgr[MCP Tool Manager]
     end
 
     subgraph "External Systems"
-        H[Cloud LLM]
-        I[Kubernetes Cluster API]
+        LLM[OpenAI-Compatible LLM]
+        K8sMCP[Kubernetes MCP Server]
+        PromMCP[Prometheus MCP Server]
+        OtherMCP[Other MCP Servers]
     end
 
-    A --> B
-    B --> C
-    B --> D
-    B --> E
+    CLI --> FastAPI
+    API --> FastAPI
+    FastAPI --> IncRepo
+    IncRepo --> Agent
+    Agent --> LLMClient
+    Agent --> MCPMgr
 
-    D --> H
-    E --> F
-    F --> G
-    G --> I
+    LLMClient --> LLM
+    MCPMgr --> K8sMCP
+    MCPMgr --> PromMCP
+    MCPMgr --> OtherMCP
 ```
 
 ## External APIs
 
-### Cloud LLM API
+### OpenAI-Compatible LLM API
 
-- **Purpose:** To parse natural language incident descriptions and extract structured entities (e.g., pod name, namespace, error type).
-- **Documentation:** TBD (depends on the selected provider, e.g., OpenAI, Google AI, Anthropic).
-- **Base URL(s):** TBD
-- **Authentication:** TBD (likely API Key-based, e.g., `Authorization: Bearer $API_KEY`). Secrets will be managed via Kubernetes secrets.
-- **Rate Limits:** TBD (will need to be considered when selecting a provider and plan).
+- **Purpose:** Powers the LangGraph ReAct agent for reasoning, decision-making, and root cause analysis.
+- **Documentation:** OpenAI API format (compatible with OpenAI, Gemini via OpenAI proxy, local LLMs)
+- **Base URL:** Configured via `LLM_BASE_URL` environment variable
+- **Authentication:** API Key-based via `LLM_API_KEY` environment variable. Secrets managed via Kubernetes secrets.
+- **Rate Limits:** Provider-dependent. Retry logic with exponential backoff implemented.
 
 **Key Endpoints Used:**
-- `POST /v1/chat/completions` (or similar endpoint for generating text): Used to send the incident description and a prompt to the LLM.
+- `POST /v1/chat/completions`: Used for all agent reasoning and tool selection decisions.
 
-**Integration Notes:** The Orchestrator's `LLM Client` will be responsible for all communication with this API. The client will need to be designed with a clear interface so that different LLM providers can be swapped in or out with minimal changes to the core application logic. Error handling will need to account for API rate limits, timeouts, and transient failures.
+**Integration Notes:**
+- LangChain's `init_chat_model` provides unified interface across providers
+- Structured output support for entity extraction
+- Retry logic handles transient failures
+- All LLM calls are logged with timing and token usage
+
+### MCP Servers
+
+- **Purpose:** Provide tools for data collection from external systems (Kubernetes, Prometheus, etc.)
+- **Protocol:** Model Context Protocol (MCP)
+- **Transports:**
+  - `stdio`: For local MCP servers running as subprocesses
+  - `streamable_http`: For remote MCP servers via HTTP
+- **Configuration:** Defined in `mcp_config.yaml`
+
+**Integration Notes:**
+- `langchain-mcp-adapters` library handles MCP protocol
+- Tools are automatically discovered and converted to LangChain format
+- Multiple MCP servers can be connected simultaneously
+- Tool execution errors are handled gracefully by the agent
 
 ## Core Workflows
+
+### LangGraph ReAct Agent Workflow
+
+The system uses LangGraph's ReAct (Reasoning + Acting) agent pattern for autonomous incident investigation. The agent combines reasoning about the problem with taking actions via MCP tools.
+
+**ReAct Agent Pattern:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Agent: Incident description
+    Agent --> Reasoning: LLM analyzes situation
+    Reasoning --> ToolSelection: Decide which tool to use
+    ToolSelection --> ToolExecution: Execute MCP tool
+    ToolExecution --> Agent: Return results
+    Agent --> Reasoning: Analyze new evidence
+    Reasoning --> Complete: Sufficient evidence
+    Complete --> [*]: Root cause determined
+```
+
+**Key Components:**
+
+1. **System Prompt**: Guides the agent to act as an SRE expert, explaining the investigation process and available tools.
+
+2. **LLM Reasoning**: The agent uses the LLM to:
+   - Analyze the incident description
+   - Determine what information is needed
+   - Decide which tools to invoke
+   - Interpret tool results
+   - Determine root cause with confidence level
+
+3. **MCP Tool Execution**: The agent autonomously invokes tools from connected MCP servers:
+   - Kubernetes tools (pod details, logs, events)
+   - Prometheus tools (metrics, alerts)
+   - Custom tools (application-specific diagnostics)
+
+4. **Investigation Loop**: The agent continues gathering evidence until it has sufficient information to determine the root cause.
+
+**Advantages:**
+- **Autonomous**: Agent decides investigation strategy
+- **Flexible**: Adapts to different incident types
+- **Extensible**: New tools automatically available
+- **Transparent**: All reasoning steps are logged
 
 ### Incident Investigation Flow
 
@@ -212,23 +287,37 @@ graph TD
 sequenceDiagram
     participant SRE as SRE/User
     participant Orch as Orchestrator Service
-    participant LLM as Cloud LLM
-    participant K8sA as Kubernetes Agent
-    participant K8s as Kubernetes API
+    participant Agent as LangGraph ReAct Agent
+    participant LLM as OpenAI-Compatible LLM
+    participant MCP as MCP Tool Manager
+    participant K8sMCP as Kubernetes MCP Server
 
     SRE->>+Orch: POST /api/v1/incidents (description)
-    Orch->>+LLM: Parse description
-    LLM-->>-Orch: Return extracted entities (pod name, etc.)
-    Orch->>+K8sA: GET /api/v1/pods/{ns}/{pod}/details
-    K8sA->>+K8s: Get Pod Details
-    K8s-->>-K8sA: Return Pod Details
-    K8sA-->>-Orch: Return Pod Details
-    Orch->>+K8sA: GET /api/v1/pods/{ns}/{pod}/logs
-    K8sA->>+K8s: Get Pod Logs
-    K8s-->>-K8sA: Return Pod Logs
-    K8sA-->>-Orch: Return Pod Logs
-    Orch->>Orch: Correlate evidence with Knowledge Graph
-    Orch-->>-SRE: Return 202 Accepted (incident_id)
+    Orch->>Orch: Create incident (status: pending)
+    Orch-->>SRE: Return 202 Accepted (incident_id)
+    Orch->>+Agent: Start investigation (async)
+
+    Agent->>+LLM: Analyze incident description
+    LLM-->>-Agent: Reasoning: Need pod details
+
+    Agent->>+MCP: Execute tool: get_pod_details
+    MCP->>+K8sMCP: Call MCP tool
+    K8sMCP-->>-MCP: Return pod details
+    MCP-->>-Agent: Tool result
+
+    Agent->>+LLM: Analyze pod details
+    LLM-->>-Agent: Reasoning: Need pod logs
+
+    Agent->>+MCP: Execute tool: get_pod_logs
+    MCP->>+K8sMCP: Call MCP tool
+    K8sMCP-->>-MCP: Return pod logs
+    MCP-->>-Agent: Tool result
+
+    Agent->>+LLM: Determine root cause
+    LLM-->>-Agent: Root cause analysis
+
+    Agent->>Orch: Update incident (status: completed)
+    Orch-->>-Agent: Investigation complete
 
     %% Some time later %%
 
@@ -466,53 +555,62 @@ sre-orchestrator/
 ├── poetry.lock
 ├── pyproject.toml          # Monorepo-level dependencies and workspace config
 ├── services/
-│   ├── orchestrator/
-│   │   ├── app/
-│   │   │   ├── __init__.py
-│   │   │   ├── api/          # FastAPI routers and endpoints
-│   │   │   │   ├── __init__.py
-│   │   │   │   └── v1/
-│   │   │   ├── core/         # Core business logic, correlation engine
-│   │   │   ├── models/       # Pydantic data models
-│   │   │   ├── services/     # Clients for external services (LLM, K8s Agent)
-│   │   │   └── main.py       # FastAPI application entrypoint
-│   │   ├── tests/
-│   │   ├── Dockerfile
-│   │   └── pyproject.toml    # Service-specific dependencies
-│   │
-│   └── k8s-agent/
-│       ├── app/
-│       │   ├── __init__.py
-│       │   ├── api/
+│   └── orchestrator/
+│       ├── src/
+│       │   ├── app/
 │       │   │   ├── __init__.py
-│       │   │   └── v1/
-│       │   ├── services/     # Kubernetes client logic
-│       │   └── main.py
-│       ├── tests/
+│       │   │   ├── api/          # FastAPI routers and endpoints
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── v1/
+│       │   │   ├── core/         # LangGraph agent, incident repository
+│       │   │   ├── models/       # Pydantic data models
+│       │   │   ├── services/     # LangChain LLM client, MCP tool manager
+│       │   │   └── main.py       # FastAPI application entrypoint
+│       │   └── tests/
+│       │       ├── unit/
+│       │       └── integration/
 │       ├── Dockerfile
-│       └── pyproject.toml
+│       ├── mcp_config.yaml       # MCP server configuration
+│       └── pyproject.toml        # Service-specific dependencies
+│
+├── cli/
+│   ├── src/
+│   │   └── sre_orchestrator_cli/
+│   │       ├── __init__.py
+│   │       ├── main.py           # CLI entry point
+│   │       ├── client.py         # Orchestrator API client
+│   │       ├── ui.py             # Terminal UI and formatting
+│   │       └── session.py        # Session management
+│   ├── README.md
+│   └── pyproject.toml            # CLI package dependencies
 │
 ├── charts/
-│   ├── sre-orchestrator/     # Helm chart for the entire application
-│   │   ├── Chart.yaml
-│   │   ├── values.yaml
-│   │   └── templates/
-│   │       ├── _helpers.tpl
-│   │       ├── deployment-orchestrator.yaml
-│   │       ├── deployment-k8s-agent.yaml
-│   │       ├── service-orchestrator.yaml
-│   │       └── ...
+│   └── sre-orchestrator/         # Helm chart for the application
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+│           ├── _helpers.tpl
+│           ├── deployment-orchestrator.yaml
+│           ├── service-orchestrator.yaml
+│           ├── secret-llm.yaml
+│           └── configmap-mcp.yaml
 │
-└── knowledge_graph.yaml      # Static knowledge graph for the MVP
+├── docs/
+│   ├── architecture.md
+│   ├── langgraph-workflow.md
+│   ├── mcp-integration.md
+│   └── cli-guide.md
+│
+└── knowledge_graph.yaml          # Static knowledge graph for the MVP
 ```
 
 ## Infrastructure and Deployment
 
 ### Infrastructure as Code
 
-- **Tool:** Helm 3.15.1
+- **Tool:** Helm 3.19.0
 - **Location:** `charts/sre-orchestrator`
-- **Approach:** A single parent Helm chart will manage the deployment of all microservices (the Orchestrator and the Kubernetes Agent). This simplifies the deployment process and ensures that all components of the application are deployed and versioned together.
+- **Approach:** A single Helm chart manages the deployment of the Orchestrator service. MCP servers are deployed separately and configured via the `mcp_config.yaml` file.
 
 ### Deployment Strategy
 
