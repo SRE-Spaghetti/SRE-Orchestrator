@@ -12,22 +12,16 @@ class IncidentRepository:
     def __init__(self):
         self._incidents: Dict[UUID, Incident] = {}
 
-    async def create(
-        self,
-        description: str,
-        mcp_tools: List[Any],
-        llm_config: Dict[str, Any],
-    ) -> Incident:
+    def create_incident_sync(self, description: str) -> Incident:
         """
-        Create a new incident and initiate investigation using LangGraph agent.
+        Synchronously create incident with pending status.
+        Does NOT start investigation.
 
         Args:
             description: The incident description
-            mcp_tools: List of LangChain-compatible MCP tools
-            llm_config: LLM configuration dictionary
 
         Returns:
-            Created incident with initial status "pending"
+            Incident with status="pending"
         """
         incident = Incident(description=description, status="pending")
         self._incidents[incident.id] = incident
@@ -43,11 +37,33 @@ class IncidentRepository:
             )
         )
 
-        # Start async investigation (will update incident in background)
+        return incident
+
+    async def investigate_incident_async(
+        self,
+        incident_id: UUID,
+        mcp_tools: List[Any],
+        llm_config: Dict[str, Any],
+    ):
+        """
+        Execute investigation as background task.
+        Updates incident status and results in-place.
+
+        Args:
+            incident_id: The incident UUID
+            mcp_tools: List of LangChain-compatible MCP tools
+            llm_config: LLM configuration dictionary
+        """
+        incident = self._incidents.get(incident_id)
+        if not incident:
+            logger.error(f"Incident {incident_id} not found")
+            return
+
         try:
+            # Run investigation (existing logic)
             await self._investigate_incident(incident, mcp_tools, llm_config)
         except Exception as e:
-            logger.error(f"Investigation failed for incident {incident.id}: {e}", exc_info=True)
+            logger.error(f"Background investigation failed for incident {incident_id}: {e}", exc_info=True)
             incident.status = "failed"
             incident.error_message = str(e)
             incident.completed_at = datetime.utcnow()
@@ -61,6 +77,27 @@ class IncidentRepository:
                 )
             )
 
+    async def create(
+        self,
+        description: str,
+        mcp_tools: List[Any],
+        llm_config: Dict[str, Any],
+    ) -> Incident:
+        """
+        Create a new incident and initiate investigation using LangGraph agent.
+
+        DEPRECATED: Use create_incident_sync() + investigate_incident_async() instead.
+
+        Args:
+            description: The incident description
+            mcp_tools: List of LangChain-compatible MCP tools
+            llm_config: LLM configuration dictionary
+
+        Returns:
+            Created incident with initial status "pending"
+        """
+        incident = self.create_incident_sync(description)
+        await self.investigate_incident_async(incident.id, mcp_tools, llm_config)
         return incident
 
     async def _investigate_incident(
@@ -79,8 +116,8 @@ class IncidentRepository:
         """
         incident_id = str(incident.id)
 
-        # Update status to investigating
-        incident.status = "investigating"
+        # Update status to in_progress
+        incident.status = "in_progress"
         incident.investigation_steps.append(
             InvestigationStep(
                 step_name="investigation_started",

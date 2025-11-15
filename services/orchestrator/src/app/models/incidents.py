@@ -23,7 +23,7 @@ class InvestigationStep(BaseModel):
 class Incident(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     description: str
-    status: Literal["pending", "investigating", "completed", "failed"] = "pending"
+    status: Literal["pending", "in_progress", "completed", "failed"] = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
     evidence: Dict[str, Any] = Field(default_factory=dict)
