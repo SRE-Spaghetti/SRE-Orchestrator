@@ -31,13 +31,6 @@ The main CI/CD pipeline runs on push and pull requests to `main` and `develop` b
    - Builds wheel and source distribution
    - Uploads artifacts for deployment
 
-5. **orchestrator-deploy**: Deploys orchestrator (main branch only)
-   - Pushes Docker image to container registry
-   - Deploys to Kubernetes cluster
-
-6. **cli-publish**: Publishes CLI to PyPI (tags only)
-   - Publishes package when a version tag is pushed
-
 ## Required Secrets
 
 Configure these secrets in your GitHub repository settings:
@@ -74,21 +67,6 @@ make docker-build
 
 # Build CLI package
 make -C cli build
-```
-
-## Deployment
-
-### Orchestrator Service
-
-The orchestrator is automatically deployed to Kubernetes when changes are pushed to the `main` branch. Configure your Kubernetes deployment in the `orchestrator-deploy` job.
-
-### CLI Package
-
-The CLI is automatically published to PyPI when a version tag is pushed:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
 ```
 
 ## Notes
