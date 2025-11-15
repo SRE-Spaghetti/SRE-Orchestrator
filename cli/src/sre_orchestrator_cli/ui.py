@@ -102,12 +102,27 @@ def format_incident(incident: Dict[str, Any]) -> Panel:
             }.get(confidence, 'white')
             lines.append(f"[bold]Confidence:[/bold] [{confidence_color}]{confidence}[/{confidence_color}]")
 
-    # Evidence
+    # Evidence - show only collected evidence and recommendations, not raw tool calls
     if incident.get('evidence'):
-        lines.append("")
-        lines.append("[bold]Evidence:[/bold]")
-        evidence_json = json.dumps(incident['evidence'], indent=2)
-        lines.append("")
+        evidence = incident['evidence']
+
+        # Show collected evidence if available
+        if evidence.get('collected_evidence'):
+            lines.append("")
+            lines.append("[bold]Evidence:[/bold]")
+            for item in evidence['collected_evidence']:
+                source = item.get('source', 'unknown')
+                content_preview = str(item.get('content', ''))[:200]
+                if len(str(item.get('content', ''))) > 200:
+                    content_preview += "..."
+                lines.append(f"  • {source}: {content_preview}")
+
+        # Show recommendations if available
+        if evidence.get('recommendations'):
+            lines.append("")
+            lines.append("[bold]Recommendations:[/bold]")
+            for rec in evidence['recommendations']:
+                lines.append(f"  • {rec}")
 
     # Error message
     if incident.get('error_message'):
@@ -115,17 +130,6 @@ def format_incident(incident: Dict[str, Any]) -> Panel:
         lines.append(f"[bold red]Error:[/bold red] {incident['error_message']}")
 
     content = "\n".join(lines)
-
-    # Add evidence as JSON if present
-    if incident.get('evidence'):
-        content += "\n"
-        syntax = Syntax(
-            json.dumps(incident['evidence'], indent=2),
-            "json",
-            theme="monokai",
-            line_numbers=False
-        )
-        console.print(syntax)
 
     return Panel(
         content,
