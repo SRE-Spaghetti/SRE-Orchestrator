@@ -11,6 +11,24 @@ The refactoring will modernize the architecture by:
 - **CLI application**: Add interactive command-line interface for natural language interaction
 - **Enhanced observability**: Comprehensive error handling and logging throughout the system
 
+## Phase 2: Native LangGraph Refactoring
+
+Building on the initial LangGraph integration, this phase focuses on replacing LangChain's prebuilt agent functions with a native StateGraph implementation. This provides greater control over the investigation workflow and enables advanced features like custom routing, multi-phase investigations, and human-in-the-loop patterns.
+
+### Goals
+- **Full Control**: Replace black-box prebuilt agents with explicit graph definitions
+- **Enhanced Extensibility**: Enable easy addition of custom nodes and routing logic
+- **Better Observability**: Implement detailed logging for state transitions and decisions
+- **Maintainability**: Create clear, understandable workflow definitions
+- **Backward Compatibility**: Maintain existing behavior while enabling future enhancements
+
+### Key Improvements
+- **Native StateGraph**: Custom graph implementation with explicit nodes and edges
+- **Custom State Schema**: Well-defined TypedDict for investigation state tracking
+- **Explicit Routing**: Clear conditional logic for workflow transitions
+- **Node-Level Control**: Individual agent and tool nodes with custom error handling
+- **Feature Flag Support**: Safe rollout with ability to rollback to prebuilt agent
+
 ## Architecture Changes
 
 ### Removed Components
@@ -129,6 +147,18 @@ Create comprehensive test coverage for all new and modified components.
 
 ### Story 5.12: Update Deployment and CI/CD
 Finalize deployment artifacts and CI/CD pipeline for the refactored system.
+
+### Story 5.13: Native LangGraph Implementation
+Refactor the investigation agent from LangChain's prebuilt agent to a native LangGraph StateGraph implementation for greater control and extensibility.
+
+### Story 5.14: LangGraph State Schema and Routing Logic
+Implement the investigation state schema and routing logic for the native LangGraph workflow.
+
+### Story 5.15: LangGraph Agent and Tool Nodes
+Create explicit agent and tool execution nodes with comprehensive error handling and logging.
+
+### Story 5.16: Native Graph Integration and Testing
+Integrate the native LangGraph implementation with feature flags and comprehensive testing for backward compatibility.
 
 ## Migration Path
 
