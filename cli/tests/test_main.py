@@ -40,7 +40,7 @@ class TestInvestigateCommand:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = {
                     "incident_id": "incident-123",
-                    "status": "investigating"
+                    "status": "investigating",
                 }
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
@@ -68,7 +68,7 @@ class TestInvestigateCommand:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = {
                     "incident_id": "incident-123",
-                    "status": "investigating"
+                    "status": "investigating",
                 }
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
@@ -95,7 +95,7 @@ class TestInvestigateCommand:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = {
                     "incident_id": "incident-123",
-                    "status": "investigating"
+                    "status": "investigating",
                 }
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",

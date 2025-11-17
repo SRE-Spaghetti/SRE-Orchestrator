@@ -54,7 +54,7 @@ class TestOrchestratorClient:
         mock_response.status_code = 202
         mock_response.json.return_value = {
             "incident_id": "incident-123",
-            "status": "investigating"
+            "status": "investigating",
         }
 
         with patch("httpx.AsyncClient") as mock_client_class:
