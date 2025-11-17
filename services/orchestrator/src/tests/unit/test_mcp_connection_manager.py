@@ -1,20 +1,18 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from app.models.mcp_config import MCPConfig, MCPServerConfig
 from app.services.mcp_connection_manager import MCPConnectionManager
 
 
 @pytest.fixture
 def mcp_config():
-    return MCPConfig(
-        mcp_servers=[
-            MCPServerConfig(
-                server_url="localhost:8080/mcp",
-                transport_type="http",
-            )
-        ]
-    )
+    """Return a dictionary config as expected by MCPConnectionManager."""
+    return {
+        "test-server": {
+            "url": "http://localhost:8080/mcp",
+            "transport": "streamable_http",
+        }
+    }
 
 
 @pytest.mark.asyncio
@@ -48,7 +46,7 @@ async def test_connect_to_servers_success(mcp_config):
         )
 
         # Check if the client was added to the manager
-        assert "localhost:8080/mcp" in manager._clients
+        assert "test-server" in manager._clients
 
 
 @pytest.mark.asyncio
@@ -62,7 +60,7 @@ async def test_connect_to_servers_failure(mcp_config):
         manager = MCPConnectionManager(mcp_config)
         await manager.connect_to_servers()
 
-        assert "localhost:8080/mcp" not in manager._clients
+        assert "test-server" not in manager._clients
         assert mock_create_client.call_count == 3
 
 

@@ -4,3 +4,6 @@ services/orchestrator/.coverage
 cli/dist/*
 .kiro/**/*
 .env
+cli/.coverage
+**/coverage.xml
+.gitignore

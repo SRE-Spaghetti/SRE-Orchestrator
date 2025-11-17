@@ -31,15 +31,17 @@ def mock_config():
 class TestInvestigateCommand:
     """Tests for investigate command."""
 
-    @pytest.mark.asyncio
-    async def test_investigate_success(self, runner, mock_config):
+    def test_investigate_success(self, runner, mock_config):
         """Test successful investigation."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
             with patch(
                 "sre_orchestrator_cli.main.OrchestratorClient"
             ) as mock_client_class:
                 mock_client = AsyncMock()
-                mock_client.create_incident.return_value = "incident-123"
+                mock_client.create_incident.return_value = {
+                    "incident_id": "incident-123",
+                    "status": "investigating"
+                }
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
                     "status": "completed",
@@ -57,15 +59,17 @@ class TestInvestigateCommand:
                 assert result.exit_code == 0
                 assert "incident-123" in result.output
 
-    @pytest.mark.asyncio
-    async def test_investigate_no_wait(self, runner, mock_config):
+    def test_investigate_no_wait(self, runner, mock_config):
         """Test investigation without waiting."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
             with patch(
                 "sre_orchestrator_cli.main.OrchestratorClient"
             ) as mock_client_class:
                 mock_client = AsyncMock()
-                mock_client.create_incident.return_value = "incident-123"
+                mock_client.create_incident.return_value = {
+                    "incident_id": "incident-123",
+                    "status": "investigating"
+                }
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
                 mock_client_class.return_value = mock_client
@@ -79,8 +83,7 @@ class TestInvestigateCommand:
                 # Should not call get_incident when not waiting
                 mock_client.get_incident.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_investigate_with_url_override(self, runner):
+    def test_investigate_with_url_override(self, runner):
         """Test investigation with URL override."""
         mock_config = Mock()
         mock_config.get.return_value = None
@@ -90,7 +93,10 @@ class TestInvestigateCommand:
                 "sre_orchestrator_cli.main.OrchestratorClient"
             ) as mock_client_class:
                 mock_client = AsyncMock()
-                mock_client.create_incident.return_value = "incident-123"
+                mock_client.create_incident.return_value = {
+                    "incident_id": "incident-123",
+                    "status": "investigating"
+                }
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
                     "status": "completed",
@@ -116,8 +122,7 @@ class TestInvestigateCommand:
                 call_kwargs = mock_client_class.call_args[1]
                 assert call_kwargs["base_url"] == "http://custom:8000"
 
-    @pytest.mark.asyncio
-    async def test_investigate_no_url_configured(self, runner):
+    def test_investigate_no_url_configured(self, runner):
         """Test investigation with no URL configured."""
         mock_config = Mock()
         mock_config.get.return_value = None
@@ -132,8 +137,7 @@ class TestInvestigateCommand:
 class TestListCommand:
     """Tests for list command."""
 
-    @pytest.mark.asyncio
-    async def test_list_success(self, runner, mock_config):
+    def test_list_success(self, runner, mock_config):
         """Test successful incident listing."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
             with patch(
@@ -153,8 +157,7 @@ class TestListCommand:
                 assert result.exit_code == 0
                 mock_client.list_incidents.assert_called_once_with(limit=10)
 
-    @pytest.mark.asyncio
-    async def test_list_with_limit(self, runner, mock_config):
+    def test_list_with_limit(self, runner, mock_config):
         """Test listing with custom limit."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
             with patch(
@@ -175,8 +178,7 @@ class TestListCommand:
 class TestShowCommand:
     """Tests for show command."""
 
-    @pytest.mark.asyncio
-    async def test_show_success(self, runner, mock_config):
+    def test_show_success(self, runner, mock_config):
         """Test successful incident display."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
             with patch(

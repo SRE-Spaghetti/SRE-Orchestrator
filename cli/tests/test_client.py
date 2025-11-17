@@ -52,7 +52,10 @@ class TestOrchestratorClient:
         """Test successful incident creation."""
         mock_response = Mock()
         mock_response.status_code = 202
-        mock_response.json.return_value = {"id": "incident-123"}
+        mock_response.json.return_value = {
+            "incident_id": "incident-123",
+            "status": "investigating"
+        }
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -60,9 +63,10 @@ class TestOrchestratorClient:
             mock_client_class.return_value = mock_client
 
             client = OrchestratorClient(base_url, api_key)
-            incident_id = await client.create_incident("Pod is crashing")
+            result = await client.create_incident("Pod is crashing")
 
-            assert incident_id == "incident-123"
+            assert result["incident_id"] == "incident-123"
+            assert result["status"] == "investigating"
             mock_client.post.assert_called_once_with(
                 "/api/v1/incidents", json={"description": "Pod is crashing"}
             )

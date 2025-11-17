@@ -60,3 +60,13 @@ class MCPServerConfig(BaseModel):
     )
 
     model_config = ConfigDict(extra="allow")
+
+
+class MCPConfig(BaseModel):
+    """Configuration container for MCP servers."""
+
+    mcp_servers: List[MCPServerConfig] = Field(
+        default_factory=list, description="List of MCP server configurations"
+    )
+
+    model_config = ConfigDict(extra="forbid")

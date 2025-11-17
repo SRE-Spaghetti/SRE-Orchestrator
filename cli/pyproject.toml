@@ -24,6 +24,9 @@ ruff = "^0.2.0"
 [tool.poetry.scripts]
 sre-orchestrator = "sre_orchestrator_cli.main:cli"
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
