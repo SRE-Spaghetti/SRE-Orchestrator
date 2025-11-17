@@ -2,15 +2,12 @@
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.markdown import Markdown
-from rich.json import JSON
 from rich import box
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
-import json
 
 
 console = Console()
@@ -78,7 +75,7 @@ def format_incident(incident: Dict[str, Any]) -> Panel:
         )
 
     lines.append("")
-    lines.append(f"[bold]Description:[/bold]")
+    lines.append("[bold]Description:[/bold]")
     lines.append(incident["description"])
 
     # Extracted entities
@@ -158,7 +155,7 @@ def format_timestamp(timestamp: str) -> str:
     try:
         dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except:
+    except (ValueError, AttributeError):
         return timestamp
 
 

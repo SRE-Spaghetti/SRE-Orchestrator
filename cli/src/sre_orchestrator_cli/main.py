@@ -2,7 +2,6 @@
 
 import click
 import asyncio
-import os
 from typing import Optional
 
 from .client import (
@@ -145,7 +144,7 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
 
                     except KeyboardInterrupt:
                         console.print()
-                        print_info(f"Investigation continues in background.")
+                        print_info("Investigation continues in background.")
                         print_info(
                             f"Check status with: sre-orchestrator show {incident_id}"
                         )
@@ -154,7 +153,7 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
                     except TimeoutError as e:
                         console.print()
                         print_error(str(e))
-                        print_info(f"Investigation continues in background.")
+                        print_info("Investigation continues in background.")
                         print_info(
                             f"Check status with: sre-orchestrator show {incident_id}"
                         )
@@ -279,14 +278,14 @@ async def investigate_async(
 
                 except KeyboardInterrupt:
                     console.print()
-                    print_info(f"Investigation continues in background.")
+                    print_info("Investigation continues in background.")
                     print_info(
                         f"Check status with: sre-orchestrator show {incident_id}"
                     )
                 except TimeoutError as e:
                     console.print()
                     print_error(str(e))
-                    print_info(f"Investigation continues in background.")
+                    print_info("Investigation continues in background.")
                     print_info(
                         f"Check status with: sre-orchestrator show {incident_id}"
                     )

@@ -6,7 +6,6 @@ import httpx
 
 from sre_orchestrator_cli.client import (
     OrchestratorClient,
-    OrchestratorClientError,
     ConnectionError,
     AuthenticationError,
     NotFoundError,
