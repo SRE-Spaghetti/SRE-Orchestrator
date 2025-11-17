@@ -6,7 +6,7 @@ IMAGE_TAG ?= latest
 -include .env
 export
 
-.PHONY: help docker-build lint test run install format lock install-tools env-check
+.PHONY: help docker-build lint test test-unit test-cov test-cov-fail test-fast run install format lock install-tools env-check
 
 help:
 	@echo "Usage: make <target>"
@@ -17,9 +17,13 @@ help:
 	@echo "  env-check              Check if required environment variables are set"
 	@echo "  run                    Run the FastAPI application with Uvicorn"
 	@echo "  lint                   Lint the code with Ruff"
-	@echo "  test                   Run tests with Pytest"
-	@echo "  docker-build           Build the Docker image. Docker must be already installed."
 	@echo "  format                 Format the code with Black."
+	@echo "  test                   Run all tests with Pytest"
+	@echo "  test-unit              Run only unit tests"
+	@echo "  test-cov               Run tests with coverage report"
+	@echo "  test-cov-fail          Run tests with coverage and fail if below 85%"
+	@echo "  test-fast              Run tests with minimal output"
+	@echo "  docker-build           Build the Docker image. Docker must be already installed."
 	@echo "  lock                   Generate poetry.lock file."
 	@echo ""
 	@echo "Environment Variables:"
@@ -57,8 +61,24 @@ lint:
 	@poetry run ruff check .
 
 test:
-	@echo "Running tests with Pytest..."
-	@poetry run pytest
+	@echo "Running all tests with Pytest..."
+	@poetry run pytest tests/ -v
+
+test-unit:
+	@echo "Running unit tests..."
+	@poetry run pytest tests/unit/ -v
+
+test-cov:
+	@echo "Running tests with coverage report..."
+	@poetry run pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html -v
+
+test-cov-fail:
+	@echo "Running tests with coverage threshold (85%)..."
+	@poetry run pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html --cov-fail-under=85 -v
+
+test-fast:
+	@echo "Running tests with minimal output..."
+	@poetry run pytest tests/unit/ -v --tb=short -q
 
 docker-build: lint format security
 	@echo "Building Docker image sre-orchestrator:latest..."

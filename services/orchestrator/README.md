@@ -82,6 +82,153 @@ make lint
 make format
 ```
 
+## Testing
+
+The orchestrator service has comprehensive unit test coverage for all core components, services, models, and API endpoints.
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests with verbose output
+poetry run pytest tests/ -v
+
+# Run specific test file
+poetry run pytest tests/unit/core/test_incident_repository.py -v
+
+# Run tests with coverage report
+poetry run pytest --cov=app --cov-report=term --cov-report=xml
+
+# Run tests and show slowest durations
+poetry run pytest --durations=10
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py                    # Shared fixtures and configuration
+├── fixtures/                      # Reusable test fixtures
+│   ├── incident_fixtures.py       # Incident-related test data
+│   ├── mcp_fixtures.py            # MCP tool mocks
+│   └── llm_fixtures.py            # LLM response mocks
+└── unit/                          # Unit tests
+    ├── api/                       # API endpoint tests
+    ├── core/                      # Core business logic tests
+    ├── services/                  # Service layer tests
+    └── test_models.py             # Data model tests
+```
+
+### Coverage Requirements
+
+The test suite maintains high coverage standards:
+- Overall target: 85%
+- Models: 95%
+- API endpoints: 90%
+- Core logic: 85-90%
+- Services: 85%
+
+Current coverage for tested modules:
+- `api/v1/incidents.py`: 100%
+- `core/incident_repository.py`: 86%
+- `core/investigation_agent.py`: 90%
+- `core/retry_utils.py`: 100%
+- `models/incidents.py`: 100%
+- `services/knowledge_graph_service.py`: 100%
+- `services/mcp_config_service.py`: 97%
+- `services/mcp_tool_manager.py`: 100%
+
+### Test Fixtures
+
+The test suite provides reusable fixtures for common testing scenarios:
+
+#### Incident Fixtures
+```python
+@pytest.fixture
+def sample_incident() -> Incident
+    """Provides a sample incident for testing"""
+
+@pytest.fixture
+def sample_incident_dict() -> Dict[str, Any]
+    """Provides incident data as dictionary for API tests"""
+```
+
+#### MCP Fixtures
+```python
+@pytest.fixture
+def mock_mcp_tool(mocker)
+    """Mock MCP tool for testing without actual tool execution"""
+
+@pytest.fixture
+def mock_mcp_config() -> Dict[str, Any]
+    """Provides mock MCP configuration"""
+```
+
+#### LLM Fixtures
+```python
+@pytest.fixture
+def mock_llm(mocker)
+    """Mock ChatOpenAI for testing without actual LLM calls"""
+
+@pytest.fixture
+def mock_llm_response() -> Any
+    """Provides mock LLM response with tool calls"""
+```
+
+### Writing New Tests
+
+When adding new tests, follow these guidelines:
+
+1. **Test Naming**: Use descriptive names that explain what is being tested
+   ```python
+   def test_create_incident_sync_creates_pending_incident()
+   def test_investigate_incident_async_handles_llm_failure()
+   ```
+
+2. **AAA Pattern**: Structure tests with Arrange, Act, Assert
+   ```python
+   def test_example():
+       # Arrange: Set up test data and mocks
+       incident = Incident(description="Test")
+
+       # Act: Execute the function under test
+       result = function_under_test(incident)
+
+       # Assert: Verify the expected outcome
+       assert result.status == "completed"
+   ```
+
+3. **Use Fixtures**: Leverage existing fixtures for common setup
+   ```python
+   def test_with_fixture(sample_incident, mock_llm):
+       result = investigate(sample_incident, mock_llm)
+       assert result is not None
+   ```
+
+4. **Mock External Dependencies**: Never make real network calls or external service calls
+   ```python
+   @pytest.fixture
+   def mock_external_service(mocker):
+       return mocker.patch('app.services.external.call_api')
+   ```
+
+5. **Test Edge Cases**: Include tests for error scenarios and boundary conditions
+   ```python
+   def test_handles_empty_input()
+   def test_handles_invalid_status()
+   def test_handles_llm_timeout()
+   ```
+
+### Performance
+
+The test suite is optimized for fast execution:
+- All external dependencies are mocked
+- No network calls or file I/O (except tmp_path)
+- Current execution time: ~10 seconds for 173 tests
+- Target: < 30 seconds for full suite
+
 ## Docker
 
 ```bash
