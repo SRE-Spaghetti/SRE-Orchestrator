@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any
 
 class ConfigError(Exception):
     """Raised when configuration operations fail."""
+
     pass
 
 
@@ -38,7 +39,7 @@ class Config:
         """Load configuration from file."""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, "r") as f:
                     self._config = yaml.safe_load(f) or {}
             except Exception as e:
                 raise ConfigError(f"Failed to load config from {self.config_file}: {e}")
@@ -52,7 +53,7 @@ class Config:
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Write config file with secure permissions
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 yaml.safe_dump(self._config, f, default_flow_style=False)
 
             # Set file permissions to 0600 (owner read/write only)

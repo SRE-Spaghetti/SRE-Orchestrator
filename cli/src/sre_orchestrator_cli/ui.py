@@ -72,60 +72,62 @@ def format_incident(incident: Dict[str, Any]) -> Panel:
     lines.append(f"[bold]Status:[/bold] {format_status(incident['status'])}")
     lines.append(f"[bold]Created:[/bold] {format_timestamp(incident['created_at'])}")
 
-    if incident.get('completed_at'):
-        lines.append(f"[bold]Completed:[/bold] {format_timestamp(incident['completed_at'])}")
+    if incident.get("completed_at"):
+        lines.append(
+            f"[bold]Completed:[/bold] {format_timestamp(incident['completed_at'])}"
+        )
 
     lines.append("")
     lines.append(f"[bold]Description:[/bold]")
-    lines.append(incident['description'])
+    lines.append(incident["description"])
 
     # Extracted entities
-    if incident.get('extracted_entities'):
+    if incident.get("extracted_entities"):
         lines.append("")
         lines.append("[bold]Extracted Entities:[/bold]")
-        for key, value in incident['extracted_entities'].items():
+        for key, value in incident["extracted_entities"].items():
             if value:
                 lines.append(f"  • {key}: {value}")
 
     # Root cause
-    if incident.get('suggested_root_cause'):
+    if incident.get("suggested_root_cause"):
         lines.append("")
         lines.append("[bold]Root Cause:[/bold]")
-        lines.append(incident['suggested_root_cause'])
+        lines.append(incident["suggested_root_cause"])
 
-        if incident.get('confidence_score'):
-            confidence = incident['confidence_score']
-            confidence_color = {
-                'high': 'green',
-                'medium': 'yellow',
-                'low': 'red'
-            }.get(confidence, 'white')
-            lines.append(f"[bold]Confidence:[/bold] [{confidence_color}]{confidence}[/{confidence_color}]")
+        if incident.get("confidence_score"):
+            confidence = incident["confidence_score"]
+            confidence_color = {"high": "green", "medium": "yellow", "low": "red"}.get(
+                confidence, "white"
+            )
+            lines.append(
+                f"[bold]Confidence:[/bold] [{confidence_color}]{confidence}[/{confidence_color}]"
+            )
 
     # Evidence - show only collected evidence and recommendations, not raw tool calls
-    if incident.get('evidence'):
-        evidence = incident['evidence']
+    if incident.get("evidence"):
+        evidence = incident["evidence"]
 
         # Show collected evidence if available
-        if evidence.get('collected_evidence'):
+        if evidence.get("collected_evidence"):
             lines.append("")
             lines.append("[bold]Evidence:[/bold]")
-            for item in evidence['collected_evidence']:
-                source = item.get('source', 'unknown')
-                content_preview = str(item.get('content', ''))[:200]
-                if len(str(item.get('content', ''))) > 200:
+            for item in evidence["collected_evidence"]:
+                source = item.get("source", "unknown")
+                content_preview = str(item.get("content", ""))[:200]
+                if len(str(item.get("content", ""))) > 200:
                     content_preview += "..."
                 lines.append(f"  • {source}: {content_preview}")
 
         # Show recommendations if available
-        if evidence.get('recommendations'):
+        if evidence.get("recommendations"):
             lines.append("")
             lines.append("[bold]Recommendations:[/bold]")
-            for rec in evidence['recommendations']:
+            for rec in evidence["recommendations"]:
                 lines.append(f"  • {rec}")
 
     # Error message
-    if incident.get('error_message'):
+    if incident.get("error_message"):
         lines.append("")
         lines.append(f"[bold red]Error:[/bold red] {incident['error_message']}")
 
@@ -135,27 +137,27 @@ def format_incident(incident: Dict[str, Any]) -> Panel:
         content,
         title=f"Incident {incident['id'][:8]}",
         border_style="blue",
-        box=box.ROUNDED
+        box=box.ROUNDED,
     )
 
 
 def format_status(status: str) -> str:
     """Format status with color."""
     status_colors = {
-        'pending': 'yellow',
-        'investigating': 'blue',
-        'completed': 'green',
-        'failed': 'red'
+        "pending": "yellow",
+        "investigating": "blue",
+        "completed": "green",
+        "failed": "red",
     }
-    color = status_colors.get(status, 'white')
+    color = status_colors.get(status, "white")
     return f"[{color}]{status}[/{color}]"
 
 
 def format_timestamp(timestamp: str) -> str:
     """Format ISO timestamp to readable format."""
     try:
-        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
     except:
         return timestamp
 
@@ -179,17 +181,16 @@ def print_incident_table(incidents: list[Dict[str, Any]]):
     table.add_column("Created", style="green")
 
     for incident in incidents:
-        incident_id = incident['id'][:8] + "..."
-        status = incident['status']
-        description = incident['description'][:50] + "..." if len(incident['description']) > 50 else incident['description']
-        created = format_timestamp(incident['created_at'])
-
-        table.add_row(
-            incident_id,
-            status,
-            description,
-            created
+        incident_id = incident["id"][:8] + "..."
+        status = incident["status"]
+        description = (
+            incident["description"][:50] + "..."
+            if len(incident["description"]) > 50
+            else incident["description"]
         )
+        created = format_timestamp(incident["created_at"])
+
+        table.add_row(incident_id, status, description, created)
 
     console.print(table)
 
@@ -208,7 +209,7 @@ def show_progress(message: str = "Investigating incident..."):
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
-        transient=True
+        transient=True,
     )
 
 

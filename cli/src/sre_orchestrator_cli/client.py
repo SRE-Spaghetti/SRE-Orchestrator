@@ -8,28 +8,34 @@ from datetime import datetime
 
 class OrchestratorClientError(Exception):
     """Base exception for orchestrator client errors."""
+
     pass
 
 
 class ConnectionError(OrchestratorClientError):
     """Raised when connection to orchestrator fails."""
+
     pass
 
 
 class AuthenticationError(OrchestratorClientError):
     """Raised when authentication fails."""
+
     pass
 
 
 class NotFoundError(OrchestratorClientError):
     """Raised when a resource is not found."""
+
     pass
 
 
 class OrchestratorClient:
     """Client for interacting with the SRE Orchestrator API."""
 
-    def __init__(self, base_url: str, api_key: Optional[str] = None, timeout: float = 60.0):
+    def __init__(
+        self, base_url: str, api_key: Optional[str] = None, timeout: float = 60.0
+    ):
         """
         Initialize the orchestrator client.
 
@@ -50,9 +56,7 @@ class OrchestratorClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         self._client = httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=headers,
-            timeout=self.timeout
+            base_url=self.base_url, headers=headers, timeout=self.timeout
         )
         return self
 
@@ -69,9 +73,7 @@ class OrchestratorClient:
                 headers["Authorization"] = f"Bearer {self.api_key}"
 
             self._client = httpx.AsyncClient(
-                base_url=self.base_url,
-                headers=headers,
-                timeout=self.timeout
+                base_url=self.base_url, headers=headers, timeout=self.timeout
             )
         return self._client
 
@@ -94,8 +96,7 @@ class OrchestratorClient:
 
         try:
             response = await client.post(
-                "/api/v1/incidents",
-                json={"description": description}
+                "/api/v1/incidents", json={"description": description}
             )
 
             if response.status_code == 401:
@@ -105,10 +106,7 @@ class OrchestratorClient:
             elif response.status_code == 202:
                 # Handle 202 Accepted response explicitly
                 data = response.json()
-                return {
-                    "incident_id": data["incident_id"],
-                    "status": data["status"]
-                }
+                return {"incident_id": data["incident_id"], "status": data["status"]}
             elif response.status_code >= 400:
                 error_detail = response.json().get("detail", "Unknown error")
                 raise OrchestratorClientError(f"API error: {error_detail}")
@@ -118,11 +116,13 @@ class OrchestratorClient:
             # Fallback for backward compatibility
             return {
                 "incident_id": data.get("incident_id", data.get("id")),
-                "status": data.get("status", "unknown")
+                "status": data.get("status", "unknown"),
             }
 
         except httpx.ConnectError as e:
-            raise ConnectionError(f"Failed to connect to orchestrator at {self.base_url}: {e}")
+            raise ConnectionError(
+                f"Failed to connect to orchestrator at {self.base_url}: {e}"
+            )
         except httpx.TimeoutException:
             raise ConnectionError(f"Request timed out after {self.timeout} seconds")
         except httpx.HTTPError as e:
@@ -160,7 +160,9 @@ class OrchestratorClient:
             return response.json()
 
         except httpx.ConnectError as e:
-            raise ConnectionError(f"Failed to connect to orchestrator at {self.base_url}: {e}")
+            raise ConnectionError(
+                f"Failed to connect to orchestrator at {self.base_url}: {e}"
+            )
         except httpx.TimeoutException:
             raise ConnectionError(f"Request timed out after {self.timeout} seconds")
         except httpx.HTTPError as e:
@@ -171,7 +173,7 @@ class OrchestratorClient:
         incident_id: str,
         interval: float = 5.0,
         timeout: float = 600.0,
-        callback: Optional[Callable[[Dict[str, Any]], None]] = None
+        callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> Dict[str, Any]:
         """
         Poll incident status until completion, failure, or timeout.
@@ -234,10 +236,7 @@ class OrchestratorClient:
         client = self._get_client()
 
         try:
-            response = await client.get(
-                "/api/v1/incidents",
-                params={"limit": limit}
-            )
+            response = await client.get("/api/v1/incidents", params={"limit": limit})
 
             if response.status_code == 401:
                 raise AuthenticationError("Authentication failed. Check your API key.")
@@ -249,7 +248,9 @@ class OrchestratorClient:
             return response.json()
 
         except httpx.ConnectError as e:
-            raise ConnectionError(f"Failed to connect to orchestrator at {self.base_url}: {e}")
+            raise ConnectionError(
+                f"Failed to connect to orchestrator at {self.base_url}: {e}"
+            )
         except httpx.TimeoutException:
             raise ConnectionError(f"Request timed out after {self.timeout} seconds")
         except httpx.HTTPError as e:

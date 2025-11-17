@@ -5,11 +5,23 @@ import asyncio
 import os
 from typing import Optional
 
-from .client import OrchestratorClient, ConnectionError, AuthenticationError, NotFoundError, OrchestratorClientError
+from .client import (
+    OrchestratorClient,
+    ConnectionError,
+    AuthenticationError,
+    NotFoundError,
+    OrchestratorClientError,
+)
 from .config import Config, ConfigError
 from .ui import (
-    console, print_welcome, print_error, print_success, print_info,
-    format_incident, print_incident_table, show_progress
+    console,
+    print_welcome,
+    print_error,
+    print_success,
+    print_info,
+    format_incident,
+    print_incident_table,
+    show_progress,
 )
 from .session import Session
 
@@ -20,7 +32,9 @@ def get_client_from_config(config: Config) -> OrchestratorClient:
     api_key = config.get("api_key")
 
     if not url:
-        raise ConfigError("Orchestrator URL not configured. Run: sre-orchestrator config set orchestrator-url <url>")
+        raise ConfigError(
+            "Orchestrator URL not configured. Run: sre-orchestrator config set orchestrator-url <url>"
+        )
 
     return OrchestratorClient(base_url=url, api_key=api_key)
 
@@ -58,7 +72,9 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
 
         if not orchestrator_url:
             print_error("Orchestrator URL not configured.")
-            print_info("Set it with: sre-orchestrator config set orchestrator-url <url>")
+            print_info(
+                "Set it with: sre-orchestrator config set orchestrator-url <url>"
+            )
             print_info("Or use: sre-orchestrator chat --url <url>")
             return
 
@@ -111,13 +127,15 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
 
                             def update_progress(incident):
                                 status = incident.get("status", "unknown")
-                                progress.update(task, description=f"Investigating... ({status})")
+                                progress.update(
+                                    task, description=f"Investigating... ({status})"
+                                )
 
                             incident = await client.poll_incident(
                                 incident_id,
                                 interval=5.0,
                                 timeout=600.0,
-                                callback=update_progress
+                                callback=update_progress,
                             )
 
                         # Display results
@@ -128,21 +146,29 @@ async def chat_async(url: Optional[str], api_key: Optional[str]):
                     except KeyboardInterrupt:
                         console.print()
                         print_info(f"Investigation continues in background.")
-                        print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                        print_info(
+                            f"Check status with: sre-orchestrator show {incident_id}"
+                        )
                         print_info("Use 'exit' or 'quit' to leave")
                         continue
                     except TimeoutError as e:
                         console.print()
                         print_error(str(e))
                         print_info(f"Investigation continues in background.")
-                        print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                        print_info(
+                            f"Check status with: sre-orchestrator show {incident_id}"
+                        )
                         continue
 
                 except KeyboardInterrupt:
                     console.print()
                     print_info("Use 'exit' or 'quit' to leave")
                     continue
-                except (ConnectionError, AuthenticationError, OrchestratorClientError) as e:
+                except (
+                    ConnectionError,
+                    AuthenticationError,
+                    OrchestratorClientError,
+                ) as e:
                     print_error(str(e))
                     continue
 
@@ -179,13 +205,19 @@ async def handle_show_command(client: OrchestratorClient, incident_id: str):
 @click.argument("description")
 @click.option("--url", help="Orchestrator URL (overrides config)")
 @click.option("--api-key", help="API key (overrides config)")
-@click.option("--wait/--no-wait", default=True, help="Wait for investigation to complete")
-def investigate(description: str, url: Optional[str], api_key: Optional[str], wait: bool):
+@click.option(
+    "--wait/--no-wait", default=True, help="Wait for investigation to complete"
+)
+def investigate(
+    description: str, url: Optional[str], api_key: Optional[str], wait: bool
+):
     """Investigate an incident with a one-shot command."""
     asyncio.run(investigate_async(description, url, api_key, wait))
 
 
-async def investigate_async(description: str, url: Optional[str], api_key: Optional[str], wait: bool):
+async def investigate_async(
+    description: str, url: Optional[str], api_key: Optional[str], wait: bool
+):
     """Async implementation of investigate command."""
     try:
         config = Config()
@@ -203,11 +235,17 @@ async def investigate_async(description: str, url: Optional[str], api_key: Optio
 
         if not orchestrator_url:
             print_error("Orchestrator URL not configured.")
-            print_info("Set it with: sre-orchestrator config set orchestrator-url <url>")
-            print_info("Or use: sre-orchestrator investigate --url <url> '<description>'")
+            print_info(
+                "Set it with: sre-orchestrator config set orchestrator-url <url>"
+            )
+            print_info(
+                "Or use: sre-orchestrator investigate --url <url> '<description>'"
+            )
             return
 
-        async with OrchestratorClient(base_url=orchestrator_url, api_key=auth_key) as client:
+        async with OrchestratorClient(
+            base_url=orchestrator_url, api_key=auth_key
+        ) as client:
             # Create incident
             with show_progress() as progress:
                 task = progress.add_task("Creating incident...", total=None)
@@ -224,13 +262,15 @@ async def investigate_async(description: str, url: Optional[str], api_key: Optio
 
                         def update_progress(incident):
                             status = incident.get("status", "unknown")
-                            progress.update(task, description=f"Investigating... ({status})")
+                            progress.update(
+                                task, description=f"Investigating... ({status})"
+                            )
 
                         incident = await client.poll_incident(
                             incident_id,
                             interval=5.0,
                             timeout=600.0,
-                            callback=update_progress
+                            callback=update_progress,
                         )
 
                     # Display results
@@ -240,14 +280,20 @@ async def investigate_async(description: str, url: Optional[str], api_key: Optio
                 except KeyboardInterrupt:
                     console.print()
                     print_info(f"Investigation continues in background.")
-                    print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                    print_info(
+                        f"Check status with: sre-orchestrator show {incident_id}"
+                    )
                 except TimeoutError as e:
                     console.print()
                     print_error(str(e))
                     print_info(f"Investigation continues in background.")
-                    print_info(f"Check status with: sre-orchestrator show {incident_id}")
+                    print_info(
+                        f"Check status with: sre-orchestrator show {incident_id}"
+                    )
             else:
-                print_info(f"Investigation started. Check status with: sre-orchestrator show {incident_id}")
+                print_info(
+                    f"Investigation started. Check status with: sre-orchestrator show {incident_id}"
+                )
 
     except ConfigError as e:
         print_error(str(e))
@@ -284,10 +330,14 @@ async def list_async(limit: int, url: Optional[str], api_key: Optional[str]):
 
         if not orchestrator_url:
             print_error("Orchestrator URL not configured.")
-            print_info("Set it with: sre-orchestrator config set orchestrator-url <url>")
+            print_info(
+                "Set it with: sre-orchestrator config set orchestrator-url <url>"
+            )
             return
 
-        async with OrchestratorClient(base_url=orchestrator_url, api_key=auth_key) as client:
+        async with OrchestratorClient(
+            base_url=orchestrator_url, api_key=auth_key
+        ) as client:
             incidents = await client.list_incidents(limit=limit)
             print_incident_table(incidents)
 
@@ -326,10 +376,14 @@ async def show_async(incident_id: str, url: Optional[str], api_key: Optional[str
 
         if not orchestrator_url:
             print_error("Orchestrator URL not configured.")
-            print_info("Set it with: sre-orchestrator config set orchestrator-url <url>")
+            print_info(
+                "Set it with: sre-orchestrator config set orchestrator-url <url>"
+            )
             return
 
-        async with OrchestratorClient(base_url=orchestrator_url, api_key=auth_key) as client:
+        async with OrchestratorClient(
+            base_url=orchestrator_url, api_key=auth_key
+        ) as client:
             incident = await client.get_incident(incident_id)
             console.print(format_incident(incident))
 

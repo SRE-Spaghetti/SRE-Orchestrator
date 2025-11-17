@@ -1,4 +1,5 @@
 """Tests for application configuration."""
+
 from pathlib import Path
 from app.config import get_mcp_config_path
 

@@ -17,7 +17,7 @@ from app.core.investigation_agent import (
     extract_root_cause,
     extract_confidence,
     extract_evidence,
-    extract_recommendations
+    extract_recommendations,
 )
 
 
@@ -33,16 +33,16 @@ class TestShouldContinueRouting:
                 {
                     "name": "get_pod_details",
                     "args": {"pod_name": "test-pod"},
-                    "id": "call_123"
+                    "id": "call_123",
                 }
-            ]
+            ],
         )
 
         state = {
             "messages": [ai_message],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state)
@@ -51,15 +51,13 @@ class TestShouldContinueRouting:
     def test_should_continue_without_tool_calls(self):
         """Test routing when LLM provides final answer - returns 'end'."""
         # Create a message without tool calls
-        ai_message = AIMessage(
-            content="ROOT CAUSE: Memory leak in application"
-        )
+        ai_message = AIMessage(content="ROOT CAUSE: Memory leak in application")
 
         state = {
             "messages": [ai_message],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state)
@@ -68,16 +66,13 @@ class TestShouldContinueRouting:
     def test_should_continue_with_empty_tool_calls(self):
         """Test routing when tool_calls attribute exists but is empty."""
         # Create a message with empty tool calls list
-        ai_message = AIMessage(
-            content="Analysis complete",
-            tool_calls=[]
-        )
+        ai_message = AIMessage(content="Analysis complete", tool_calls=[])
 
         state = {
             "messages": [ai_message],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state)
@@ -91,7 +86,7 @@ class TestShouldContinueRouting:
             "messages": [],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Should raise IndexError or handle gracefully
@@ -109,21 +104,21 @@ class TestShouldContinueRouting:
                 {
                     "name": "get_pod_details",
                     "args": {"pod_name": "test-pod"},
-                    "id": "call_123"
+                    "id": "call_123",
                 },
                 {
                     "name": "get_pod_logs",
                     "args": {"pod_name": "test-pod"},
-                    "id": "call_124"
-                }
-            ]
+                    "id": "call_124",
+                },
+            ],
         )
 
         state = {
             "messages": [ai_message],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state)
@@ -135,21 +130,18 @@ class TestShouldContinueRouting:
         human_message = HumanMessage(content="Pod is crashing")
         ai_message_1 = AIMessage(
             content="Let me check the pod",
-            tool_calls=[{"name": "get_pod_details", "args": {}, "id": "call_1"}]
+            tool_calls=[{"name": "get_pod_details", "args": {}, "id": "call_1"}],
         )
         tool_message = ToolMessage(
-            content="Pod status: CrashLoopBackOff",
-            tool_call_id="call_1"
+            content="Pod status: CrashLoopBackOff", tool_call_id="call_1"
         )
-        ai_message_2 = AIMessage(
-            content="ROOT CAUSE: Application crash"
-        )
+        ai_message_2 = AIMessage(content="ROOT CAUSE: Application crash")
 
         state = {
             "messages": [human_message, ai_message_1, tool_message, ai_message_2],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Should route based on the last message (ai_message_2)
@@ -163,7 +155,7 @@ class TestShouldContinueRouting:
         state = {
             "messages": [ai_message],
             "incident_id": "inc-123",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Should still work without correlation_id
@@ -173,14 +165,13 @@ class TestShouldContinueRouting:
     def test_should_continue_without_incident_id(self):
         """Test routing when incident_id is missing."""
         ai_message = AIMessage(
-            content="",
-            tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}]
+            content="", tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}]
         )
 
         state = {
             "messages": [ai_message],
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Should still work without incident_id
@@ -190,27 +181,33 @@ class TestShouldContinueRouting:
     def test_should_continue_logging(self, caplog):
         """Test that routing function logs decisions correctly."""
         import logging
+
         caplog.set_level(logging.INFO)
 
         # Test routing to tools
         ai_message_tools = AIMessage(
             content="Checking pod",
-            tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}]
+            tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}],
         )
 
         state_tools = {
             "messages": [ai_message_tools],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state_tools)
         assert result == "tools"
 
         # Check that logging occurred with correlation ID
-        assert any("Routing to tools node" in record.message for record in caplog.records)
-        assert any("corr-456" in str(record.__dict__.get("correlation_id", "")) for record in caplog.records)
+        assert any(
+            "Routing to tools node" in record.message for record in caplog.records
+        )
+        assert any(
+            "corr-456" in str(record.__dict__.get("correlation_id", ""))
+            for record in caplog.records
+        )
 
         caplog.clear()
 
@@ -221,7 +218,7 @@ class TestShouldContinueRouting:
             "messages": [ai_message_end],
             "incident_id": "inc-123",
             "correlation_id": "corr-789",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         result = should_continue(state_end)
@@ -229,7 +226,10 @@ class TestShouldContinueRouting:
 
         # Check that logging occurred with correlation ID
         assert any("Routing to end" in record.message for record in caplog.records)
-        assert any("corr-789" in str(record.__dict__.get("correlation_id", "")) for record in caplog.records)
+        assert any(
+            "corr-789" in str(record.__dict__.get("correlation_id", ""))
+            for record in caplog.records
+        )
 
 
 class TestInvestigationState:
@@ -241,7 +241,7 @@ class TestInvestigationState:
             "messages": [HumanMessage(content="Test incident")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Verify all fields are accessible
@@ -256,14 +256,14 @@ class TestInvestigationState:
         messages = [
             HumanMessage(content="Pod is crashing"),
             AIMessage(content="Let me investigate"),
-            ToolMessage(content="Pod status: CrashLoopBackOff", tool_call_id="call_1")
+            ToolMessage(content="Pod status: CrashLoopBackOff", tool_call_id="call_1"),
         ]
 
         state = {
             "messages": messages,
             "incident_id": "inc-456",
             "correlation_id": "corr-789",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         assert len(state["messages"]) == 3
@@ -277,7 +277,7 @@ class TestInvestigationState:
             "messages": [HumanMessage(content="Test")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Simulate partial state update
@@ -295,7 +295,7 @@ class TestInvestigationState:
             "messages": [HumanMessage(content="Initial message")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Simulate what add_messages reducer does - append new messages
@@ -319,7 +319,7 @@ class TestInvestigationState:
             "messages": [],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         assert state["messages"] == []
@@ -334,7 +334,7 @@ class TestInvestigationState:
                 "messages": [HumanMessage(content="Test")],
                 "incident_id": "inc-123",
                 "correlation_id": "corr-456",
-                "investigation_status": status
+                "investigation_status": status,
             }
 
             assert state["investigation_status"] == status
@@ -345,7 +345,7 @@ class TestInvestigationState:
             "messages": [HumanMessage(content="Initial")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Update only messages
@@ -390,12 +390,9 @@ class TestHelperFunctions:
         messages = [
             AIMessage(
                 content="Let me check",
-                tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}]
+                tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}],
             ),
-            ToolMessage(
-                content="Pod status: CrashLoopBackOff",
-                tool_call_id="call_1"
-            )
+            ToolMessage(content="Pod status: CrashLoopBackOff", tool_call_id="call_1"),
         ]
         result = extract_evidence(messages)
         assert len(result) > 0
@@ -423,7 +420,7 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
@@ -446,8 +443,12 @@ class TestAgentNode:
         mock_response = AIMessage(
             content="Let me check the pod",
             tool_calls=[
-                {"name": "get_pod_details", "args": {"pod_name": "test-pod"}, "id": "call_1"}
-            ]
+                {
+                    "name": "get_pod_details",
+                    "args": {"pod_name": "test-pod"},
+                    "id": "call_1",
+                }
+            ],
         )
         mock_llm.ainvoke.return_value = mock_response
 
@@ -459,7 +460,7 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
@@ -490,7 +491,7 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
@@ -524,17 +525,28 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
         await agent_node(state)
 
         # Verify logging occurred
-        assert any("Agent node executing" in record.message for record in caplog.records)
-        assert any("Agent node completed successfully" in record.message for record in caplog.records)
-        assert any("corr-456" in str(record.__dict__.get("correlation_id", "")) for record in caplog.records)
-        assert any("inc-123" in str(record.__dict__.get("incident_id", "")) for record in caplog.records)
+        assert any(
+            "Agent node executing" in record.message for record in caplog.records
+        )
+        assert any(
+            "Agent node completed successfully" in record.message
+            for record in caplog.records
+        )
+        assert any(
+            "corr-456" in str(record.__dict__.get("correlation_id", ""))
+            for record in caplog.records
+        )
+        assert any(
+            "inc-123" in str(record.__dict__.get("incident_id", ""))
+            for record in caplog.records
+        )
 
     @pytest.mark.asyncio
     async def test_agent_node_retry_logic(self):
@@ -547,7 +559,7 @@ class TestAgentNode:
         mock_response = AIMessage(content="Success after retry")
         mock_llm.ainvoke.side_effect = [
             ConnectionError("Temporary failure"),
-            mock_response
+            mock_response,
         ]
 
         # Create agent node
@@ -558,7 +570,7 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node - retry logic should handle the first failure
@@ -588,12 +600,17 @@ class TestAgentNode:
         state = {
             "messages": [
                 HumanMessage(content="Pod is crashing"),
-                AIMessage(content="Let me check", tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}]),
-                ToolMessage(content="Pod status: CrashLoopBackOff", tool_call_id="call_1")
+                AIMessage(
+                    content="Let me check",
+                    tool_calls=[{"name": "get_pod", "args": {}, "id": "call_1"}],
+                ),
+                ToolMessage(
+                    content="Pod status: CrashLoopBackOff", tool_call_id="call_1"
+                ),
             ],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
@@ -624,7 +641,7 @@ class TestAgentNode:
             "messages": [HumanMessage(content="Pod is crashing")],
             "incident_id": "inc-123",
             "correlation_id": "corr-456",
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         # Execute agent node
@@ -632,7 +649,10 @@ class TestAgentNode:
 
         # Verify error logging
         assert any("Agent node failed" in record.message for record in caplog.records)
-        assert any("corr-456" in str(record.__dict__.get("correlation_id", "")) for record in caplog.records)
+        assert any(
+            "corr-456" in str(record.__dict__.get("correlation_id", ""))
+            for record in caplog.records
+        )
 
 
 class TestNativeGraphConstruction:
@@ -655,13 +675,17 @@ class TestNativeGraphConstruction:
             "api_key": "test-key",
             "model_name": "gpt-4",
             "temperature": 0.7,
-            "max_tokens": 2000
+            "max_tokens": 2000,
         }
 
         # Mock ChatOpenAI to avoid actual LLM initialization
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.create_agent_node") as mock_create_agent_node, \
-             patch("app.core.investigation_agent.create_tool_node_with_logging") as mock_create_tool_node:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.create_agent_node"
+        ) as mock_create_agent_node, patch(
+            "app.core.investigation_agent.create_tool_node_with_logging"
+        ) as mock_create_tool_node:
 
             mock_llm = MagicMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -677,7 +701,7 @@ class TestNativeGraphConstruction:
             agent = await create_investigation_agent_native(
                 mcp_tools=mcp_tools,
                 llm_config=llm_config,
-                correlation_id="test-corr-123"
+                correlation_id="test-corr-123",
             )
 
             # Verify agent was created
@@ -689,7 +713,7 @@ class TestNativeGraphConstruction:
                 api_key="test-key",
                 model="gpt-4",
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=2000,
             )
 
             # Verify bind_tools was called
@@ -704,30 +728,24 @@ class TestNativeGraphConstruction:
         """Test that missing base_url raises ValueError."""
         from app.core.investigation_agent import create_investigation_agent_native
 
-        llm_config = {
-            "api_key": "test-key"
-        }
+        llm_config = {"api_key": "test-key"}
 
-        with pytest.raises(ValueError, match="llm_config missing required key: base_url"):
-            await create_investigation_agent_native(
-                mcp_tools=[],
-                llm_config=llm_config
-            )
+        with pytest.raises(
+            ValueError, match="llm_config missing required key: base_url"
+        ):
+            await create_investigation_agent_native(mcp_tools=[], llm_config=llm_config)
 
     @pytest.mark.asyncio
     async def test_create_investigation_agent_native_missing_api_key(self):
         """Test that missing api_key raises ValueError."""
         from app.core.investigation_agent import create_investigation_agent_native
 
-        llm_config = {
-            "base_url": "http://test-llm.com"
-        }
+        llm_config = {"base_url": "http://test-llm.com"}
 
-        with pytest.raises(ValueError, match="llm_config missing required key: api_key"):
-            await create_investigation_agent_native(
-                mcp_tools=[],
-                llm_config=llm_config
-            )
+        with pytest.raises(
+            ValueError, match="llm_config missing required key: api_key"
+        ):
+            await create_investigation_agent_native(mcp_tools=[], llm_config=llm_config)
 
     @pytest.mark.asyncio
     async def test_create_investigation_agent_native_with_defaults(self):
@@ -737,13 +755,17 @@ class TestNativeGraphConstruction:
 
         llm_config = {
             "base_url": "http://test-llm.com",
-            "api_key": "test-key"
+            "api_key": "test-key",
             # No model_name, temperature, or max_tokens
         }
 
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.create_agent_node") as mock_create_agent_node, \
-             patch("app.core.investigation_agent.create_tool_node_with_logging") as mock_create_tool_node:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.create_agent_node"
+        ) as mock_create_agent_node, patch(
+            "app.core.investigation_agent.create_tool_node_with_logging"
+        ) as mock_create_tool_node:
 
             mock_llm = MagicMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -755,10 +777,7 @@ class TestNativeGraphConstruction:
             mock_create_agent_node.return_value = mock_agent_node
             mock_create_tool_node.return_value = mock_tool_node
 
-            await create_investigation_agent_native(
-                mcp_tools=[],
-                llm_config=llm_config
-            )
+            await create_investigation_agent_native(mcp_tools=[], llm_config=llm_config)
 
             # Verify defaults were used
             mock_chat_openai.assert_called_once_with(
@@ -766,5 +785,5 @@ class TestNativeGraphConstruction:
                 api_key="test-key",
                 model="gpt-4",  # default
                 temperature=0.7,  # default
-                max_tokens=2000  # default
+                max_tokens=2000,  # default
             )

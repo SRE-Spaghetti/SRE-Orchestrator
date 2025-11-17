@@ -150,7 +150,6 @@ def test_get_incident_not_found():
     assert response.status_code == 404
 
 
-
 class TestAsyncIncidentWorkflow:
     """Tests for async incident investigation workflow."""
 
@@ -163,18 +162,23 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ),
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation
             from app.models.incidents import Incident
+
             mock_incident = Incident(description="Test incident", status="pending")
             mock_create.return_value = mock_incident
 
             response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
 
             # Verify response
@@ -197,18 +201,23 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ),
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation
             from app.models.incidents import Incident
+
             mock_incident = Incident(description="Test incident", status="pending")
             mock_create.return_value = mock_incident
 
             response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
 
             # Verify response is immediate (202)
@@ -228,20 +237,27 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
-            patch("app.core.incident_repository.IncidentRepository.get_by_id") as mock_get,
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.core.incident_repository.IncidentRepository.get_by_id"
+            ) as mock_get,
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Create incident
             from app.models.incidents import Incident
+
             mock_incident = Incident(description="Test incident", status="pending")
             mock_create.return_value = mock_incident
             mock_get.return_value = mock_incident
 
             create_response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
             incident_id = create_response.json()["incident_id"]
 
@@ -264,9 +280,16 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock) as mock_investigate,
-            patch("app.core.incident_repository.IncidentRepository.get_by_id") as mock_get,
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ) as mock_investigate,
+            patch(
+                "app.core.incident_repository.IncidentRepository.get_by_id"
+            ) as mock_get,
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation and completion
@@ -279,7 +302,7 @@ class TestAsyncIncidentWorkflow:
                 suggested_root_cause="Memory leak",
                 confidence_score="high",
                 completed_at=datetime.utcnow(),
-                evidence={"tool_calls": [], "reasoning": "Test reasoning"}
+                evidence={"tool_calls": [], "reasoning": "Test reasoning"},
             )
             mock_create.return_value = mock_incident
             mock_get.return_value = mock_incident
@@ -291,8 +314,7 @@ class TestAsyncIncidentWorkflow:
             mock_investigate.side_effect = complete_investigation
 
             create_response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
             incident_id = create_response.json()["incident_id"]
 
@@ -316,9 +338,16 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock) as mock_investigate,
-            patch("app.core.incident_repository.IncidentRepository.get_by_id") as mock_get,
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ) as mock_investigate,
+            patch(
+                "app.core.incident_repository.IncidentRepository.get_by_id"
+            ) as mock_get,
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation and failure
@@ -329,7 +358,7 @@ class TestAsyncIncidentWorkflow:
                 description="Test incident",
                 status="failed",
                 error_message="Investigation timeout",
-                completed_at=datetime.utcnow()
+                completed_at=datetime.utcnow(),
             )
             mock_create.return_value = mock_incident
             mock_get.return_value = mock_incident
@@ -342,8 +371,7 @@ class TestAsyncIncidentWorkflow:
             mock_investigate.side_effect = fail_investigation
 
             create_response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
             incident_id = create_response.json()["incident_id"]
 
@@ -367,24 +395,31 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ),
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation
             from app.models.incidents import Incident
+
             mock_incident = Incident(description="Test incident", status="pending")
             mock_create.return_value = mock_incident
 
             start_time = time.time()
             response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
             elapsed_time = time.time() - start_time
 
             assert response.status_code == 202
-            assert elapsed_time < 2.0, f"Response took {elapsed_time:.2f}s, expected < 2s"
+            assert (
+                elapsed_time < 2.0
+            ), f"Response took {elapsed_time:.2f}s, expected < 2s"
 
     def test_get_incidents_response_time_within_1_second(self):
         """Test GET /incidents/{id} returns within 1 second (requirement 2.2)."""
@@ -397,20 +432,27 @@ class TestAsyncIncidentWorkflow:
         app.state.mcp_tool_manager = mock_tool_manager
 
         with (
-            patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
-            patch("app.core.incident_repository.IncidentRepository.get_by_id") as mock_get,
+            patch(
+                "app.core.incident_repository.IncidentRepository.create_incident_sync"
+            ) as mock_create,
+            patch(
+                "app.core.incident_repository.IncidentRepository.investigate_incident_async",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.core.incident_repository.IncidentRepository.get_by_id"
+            ) as mock_get,
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Create incident
             from app.models.incidents import Incident
+
             mock_incident = Incident(description="Test incident", status="pending")
             mock_create.return_value = mock_incident
             mock_get.return_value = mock_incident
 
             create_response = client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident"}
+                "/api/v1/incidents", json={"description": "Test incident"}
             )
             incident_id = create_response.json()["incident_id"]
 
@@ -420,4 +462,6 @@ class TestAsyncIncidentWorkflow:
             elapsed_time = time.time() - start_time
 
             assert get_response.status_code == 200
-            assert elapsed_time < 1.0, f"Response took {elapsed_time:.2f}s, expected < 1s"
+            assert (
+                elapsed_time < 1.0
+            ), f"Response took {elapsed_time:.2f}s, expected < 1s"

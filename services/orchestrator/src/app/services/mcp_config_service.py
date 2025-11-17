@@ -43,12 +43,16 @@ class MCPConfigService:
                     return {}
 
                 if not isinstance(config_data, dict):
-                    raise ValueError(f"Invalid MCP config format: expected dict, got {type(config_data)}")
+                    raise ValueError(
+                        f"Invalid MCP config format: expected dict, got {type(config_data)}"
+                    )
 
                 # Validate the configuration
                 self._validate_config(config_data)
 
-                logger.info(f"Loaded MCP configuration with {len(config_data)} server(s)")
+                logger.info(
+                    f"Loaded MCP configuration with {len(config_data)} server(s)"
+                )
                 return config_data
 
         except yaml.YAMLError as e:
@@ -69,26 +73,40 @@ class MCPConfigService:
         """
         for server_name, server_config in config_data.items():
             if not isinstance(server_config, dict):
-                raise ValueError(f"Invalid config for server '{server_name}': must be a dict")
+                raise ValueError(
+                    f"Invalid config for server '{server_name}': must be a dict"
+                )
 
-            transport = server_config.get('transport')
+            transport = server_config.get("transport")
             if not transport:
-                raise ValueError(f"Server '{server_name}' missing required 'transport' field")
+                raise ValueError(
+                    f"Server '{server_name}' missing required 'transport' field"
+                )
 
             # Validate based on transport type
-            if transport == 'streamable_http':
-                if 'url' not in server_config:
-                    raise ValueError(f"Server '{server_name}' with HTTP transport missing 'url' field")
-            elif transport == 'stdio':
-                if 'command' not in server_config:
-                    raise ValueError(f"Server '{server_name}' with stdio transport missing 'command' field")
-                if 'args' not in server_config:
-                    raise ValueError(f"Server '{server_name}' with stdio transport missing 'args' field")
+            if transport == "streamable_http":
+                if "url" not in server_config:
+                    raise ValueError(
+                        f"Server '{server_name}' with HTTP transport missing 'url' field"
+                    )
+            elif transport == "stdio":
+                if "command" not in server_config:
+                    raise ValueError(
+                        f"Server '{server_name}' with stdio transport missing 'command' field"
+                    )
+                if "args" not in server_config:
+                    raise ValueError(
+                        f"Server '{server_name}' with stdio transport missing 'args' field"
+                    )
             else:
-                raise ValueError(f"Server '{server_name}' has unsupported transport type: {transport}")
+                raise ValueError(
+                    f"Server '{server_name}' has unsupported transport type: {transport}"
+                )
 
             # Try to parse with Pydantic model for additional validation
             try:
                 MCPServerConfig(**server_config)
             except ValidationError as e:
-                raise ValueError(f"Validation error for server '{server_name}': {e}") from e
+                raise ValueError(
+                    f"Validation error for server '{server_name}': {e}"
+                ) from e

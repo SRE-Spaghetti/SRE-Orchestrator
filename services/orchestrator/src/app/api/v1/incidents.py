@@ -32,7 +32,7 @@ async def create_incident(
         logger.error("MCP Tool Manager not initialized")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MCP tools not available. Investigation cannot proceed."
+            detail="MCP tools not available. Investigation cannot proceed.",
         )
 
     mcp_tools = await mcp_tool_manager.get_tools()
@@ -43,14 +43,14 @@ async def create_incident(
         "api_key": os.getenv("LLM_API_KEY"),
         "model_name": os.getenv("LLM_MODEL_NAME", "gpt-4"),
         "temperature": float(os.getenv("LLM_TEMPERATURE", "0.7")),
-        "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2000"))
+        "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2000")),
     }
 
     if not llm_config["api_key"]:
         logger.error("LLM_API_KEY not configured")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="LLM not configured. Investigation cannot proceed."
+            detail="LLM not configured. Investigation cannot proceed.",
         )
 
     # Create incident synchronously with pending status
@@ -60,11 +60,7 @@ async def create_incident(
         # Schedule background investigation as an async task
         # This runs in the event loop without blocking the thread pool
         asyncio.create_task(
-            repo.investigate_incident_async(
-                incident.id,
-                mcp_tools,
-                llm_config
-            )
+            repo.investigate_incident_async(incident.id, mcp_tools, llm_config)
         )
 
         return NewIncidentResponse(incident_id=incident.id, status=incident.status)
@@ -72,7 +68,7 @@ async def create_incident(
         logger.error(f"Failed to create incident: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create incident: {str(e)}"
+            detail=f"Failed to create incident: {str(e)}",
         )
 
 

@@ -79,8 +79,8 @@ class MCPToolManager:
                 extra={
                     "server_count": len(self._config),
                     "server_names": list(self._config.keys()),
-                    "timestamp": start_time.isoformat()
-                }
+                    "timestamp": start_time.isoformat(),
+                },
             )
 
             # Create MultiServerMCPClient with the configuration
@@ -101,8 +101,8 @@ class MCPToolManager:
                     "tool_count": len(self._tools),
                     "tool_names": tool_names,
                     "duration_seconds": duration_seconds,
-                    "timestamp": end_time.isoformat()
-                }
+                    "timestamp": end_time.isoformat(),
+                },
             )
 
             # Log individual tool details
@@ -111,9 +111,13 @@ class MCPToolManager:
                     "MCP tool discovered",
                     extra={
                         "tool_name": tool.name,
-                        "tool_description": getattr(tool, "description", "No description"),
-                        "tool_schema": str(getattr(tool, "args_schema", "No schema"))[:200]
-                    }
+                        "tool_description": getattr(
+                            tool, "description", "No description"
+                        ),
+                        "tool_schema": str(getattr(tool, "args_schema", "No schema"))[
+                            :200
+                        ],
+                    },
                 )
 
             self._initialized = True
@@ -130,9 +134,9 @@ class MCPToolManager:
                     "error_type": type(e).__name__,
                     "duration_seconds": duration_seconds,
                     "server_count": len(self._config),
-                    "server_names": list(self._config.keys())
+                    "server_names": list(self._config.keys()),
                 },
-                exc_info=True
+                exc_info=True,
             )
             self._tools = []
             self._initialized = True
@@ -168,8 +172,8 @@ class MCPToolManager:
                     "Cleaning up MCP Tool Manager connections",
                     extra={
                         "tool_count": len(self._tools) if self._tools else 0,
-                        "timestamp": start_time.isoformat()
-                    }
+                        "timestamp": start_time.isoformat(),
+                    },
                 )
                 # MultiServerMCPClient handles cleanup automatically
                 # but we can explicitly close if needed
@@ -182,8 +186,8 @@ class MCPToolManager:
                     "MCP Tool Manager cleanup completed",
                     extra={
                         "duration_seconds": duration_seconds,
-                        "timestamp": end_time.isoformat()
-                    }
+                        "timestamp": end_time.isoformat(),
+                    },
                 )
             except Exception as e:
                 end_time = datetime.utcnow()
@@ -194,9 +198,9 @@ class MCPToolManager:
                     extra={
                         "error": str(e),
                         "error_type": type(e).__name__,
-                        "duration_seconds": duration_seconds
+                        "duration_seconds": duration_seconds,
                     },
-                    exc_info=True
+                    exc_info=True,
                 )
             finally:
                 self._client = None
@@ -236,7 +240,7 @@ class MCPToolManager:
         self,
         tool_name: str,
         tool_args: Dict[str, Any],
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> Any:
         """
         Execute an MCP tool with comprehensive logging.
@@ -270,8 +274,8 @@ class MCPToolManager:
                 extra={
                     "correlation_id": correlation_id,
                     "tool_name": tool_name,
-                    "available_tools": self.get_tool_names()
-                }
+                    "available_tools": self.get_tool_names(),
+                },
             )
             raise ValueError(f"Tool '{tool_name}' not found")
 
@@ -284,8 +288,8 @@ class MCPToolManager:
                     "correlation_id": correlation_id,
                     "tool_name": tool_name,
                     "tool_args": tool_args,
-                    "timestamp": start_time.isoformat()
-                }
+                    "timestamp": start_time.isoformat(),
+                },
             )
 
             # Execute the tool
@@ -301,8 +305,8 @@ class MCPToolManager:
                     "tool_name": tool_name,
                     "duration_seconds": duration_seconds,
                     "result_length": len(str(result)),
-                    "timestamp": end_time.isoformat()
-                }
+                    "timestamp": end_time.isoformat(),
+                },
             )
 
             return result
@@ -320,8 +324,8 @@ class MCPToolManager:
                     "error": str(e),
                     "error_type": type(e).__name__,
                     "duration_seconds": duration_seconds,
-                    "timestamp": end_time.isoformat()
+                    "timestamp": end_time.isoformat(),
                 },
-                exc_info=True
+                exc_info=True,
             )
             raise

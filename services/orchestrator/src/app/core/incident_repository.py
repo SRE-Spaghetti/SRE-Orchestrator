@@ -33,7 +33,7 @@ class IncidentRepository:
             InvestigationStep(
                 step_name="incident_created",
                 status="completed",
-                details={"description": description}
+                details={"description": description},
             )
         )
 
@@ -63,7 +63,10 @@ class IncidentRepository:
             # Run investigation (existing logic)
             await self._investigate_incident(incident, mcp_tools, llm_config)
         except Exception as e:
-            logger.error(f"Background investigation failed for incident {incident_id}: {e}", exc_info=True)
+            logger.error(
+                f"Background investigation failed for incident {incident_id}: {e}",
+                exc_info=True,
+            )
             incident.status = IncidentStatus.FAILED
             incident.error_message = str(e)
             incident.completed_at = datetime.utcnow()
@@ -73,7 +76,7 @@ class IncidentRepository:
                 InvestigationStep(
                     step_name="investigation_failed",
                     status="failed",
-                    details={"error": str(e)}
+                    details={"error": str(e)},
                 )
             )
 
@@ -122,7 +125,7 @@ class IncidentRepository:
             InvestigationStep(
                 step_name="investigation_started",
                 status="started",
-                details={"timestamp": datetime.utcnow().isoformat()}
+                details={"timestamp": datetime.utcnow().isoformat()},
             )
         )
 
@@ -136,7 +139,7 @@ class IncidentRepository:
                 InvestigationStep(
                     step_name="agent_created",
                     status="completed",
-                    details={"tool_count": len(mcp_tools)}
+                    details={"tool_count": len(mcp_tools)},
                 )
             )
         except Exception as e:
@@ -151,7 +154,7 @@ class IncidentRepository:
                     InvestigationStep(
                         step_name="investigation_progress",
                         status="started",
-                        details=details
+                        details=details,
                     )
                 )
             elif status == "completed":
@@ -166,7 +169,7 @@ class IncidentRepository:
             agent=agent,
             incident_id=incident_id,
             description=incident.description,
-            update_callback=update_callback
+            update_callback=update_callback,
         )
 
         # Update incident with investigation results
@@ -180,7 +183,7 @@ class IncidentRepository:
             incident.evidence = {
                 "tool_calls": result["tool_calls"],
                 "reasoning": result["reasoning"],
-                "recommendations": result.get("recommendations", [])
+                "recommendations": result.get("recommendations", []),
             }
 
             # Add evidence from investigation
@@ -194,8 +197,8 @@ class IncidentRepository:
                     details={
                         "root_cause": result["root_cause"],
                         "confidence": result["confidence"],
-                        "tool_calls_count": len(result["tool_calls"])
-                    }
+                        "tool_calls_count": len(result["tool_calls"]),
+                    },
                 )
             )
 
@@ -250,8 +253,8 @@ class IncidentRepository:
                         "error": result.get("error", "Unknown error"),
                         "partial_results_preserved": bool(partial_evidence),
                         "tool_calls_count": len(result.get("tool_calls", [])),
-                        "evidence_count": len(result.get("evidence", []))
-                    }
+                        "evidence_count": len(result.get("evidence", [])),
+                    },
                 )
             )
 
@@ -276,7 +279,7 @@ class IncidentRepository:
         self,
         incident_id: UUID,
         status: IncidentStatus | str,
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ):
         """
         Update the status of an incident.

@@ -27,28 +27,23 @@ class ExtractedEntities(BaseModel):
     """Structured model for entities extracted from incident descriptions."""
 
     pod_name: Optional[str] = Field(
-        default=None,
-        description="Name of the Kubernetes pod involved in the incident"
+        default=None, description="Name of the Kubernetes pod involved in the incident"
     )
     namespace: str = Field(
         default="default",
-        description="Kubernetes namespace where the incident occurred"
+        description="Kubernetes namespace where the incident occurred",
     )
-    error_summary: str = Field(
-        description="Brief summary of the error or issue"
-    )
+    error_summary: str = Field(description="Brief summary of the error or issue")
     error_type: Optional[str] = Field(
         default=None,
-        description="Type of error (e.g., 'crash', 'oom', 'network', 'timeout')"
+        description="Type of error (e.g., 'crash', 'oom', 'network', 'timeout')",
     )
 
 
 class AnalysisResult(BaseModel):
     """Structured model for incident analysis results."""
 
-    root_cause: str = Field(
-        description="Identified root cause of the incident"
-    )
+    root_cause: str = Field(description="Identified root cause of the incident")
     confidence: Literal["high", "medium", "low"] = Field(
         description="Confidence level in the root cause determination"
     )
@@ -57,7 +52,7 @@ class AnalysisResult(BaseModel):
     )
     recommendations: List[str] = Field(
         default_factory=list,
-        description="List of recommended actions to resolve or prevent the issue"
+        description="List of recommended actions to resolve or prevent the issue",
     )
 
 
@@ -65,22 +60,16 @@ class AnalysisResult(BaseModel):
 class LLMConfig(BaseModel):
     """Configuration for LLM client."""
 
-    base_url: str = Field(
-        description="Base URL for the OpenAI-compatible API endpoint"
-    )
-    api_key: str = Field(
-        description="API key for authentication"
-    )
+    base_url: str = Field(description="Base URL for the OpenAI-compatible API endpoint")
+    api_key: str = Field(description="API key for authentication")
     model_name: str = Field(
         description="Name of the model to use (e.g., 'gpt-4', 'gemini-2.5-flash')"
     )
     temperature: float = Field(
-        default=0.7,
-        description="Temperature for response generation (0.0-1.0)"
+        default=0.7, description="Temperature for response generation (0.0-1.0)"
     )
     max_tokens: int = Field(
-        default=2000,
-        description="Maximum number of tokens in the response"
+        default=2000, description="Maximum number of tokens in the response"
     )
 
     @classmethod
@@ -100,7 +89,7 @@ class LLMConfig(BaseModel):
             api_key=api_key,
             model_name=model_name,
             temperature=float(os.getenv("LLM_TEMPERATURE", "0.7")),
-            max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2000"))
+            max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2000")),
         )
 
 
@@ -126,14 +115,16 @@ class LangChainLLMClient:
             api_key=config.api_key,
             model=config.model_name,
             temperature=config.temperature,
-            max_tokens=config.max_tokens
+            max_tokens=config.max_tokens,
         )
         logger.info(
             f"Initialized LangChain LLM client with model {config.model_name} "
             f"at {config.base_url}"
         )
 
-    def extract_entities(self, description: str, max_retries: int = 3) -> Optional[ExtractedEntities]:
+    def extract_entities(
+        self, description: str, max_retries: int = 3
+    ) -> Optional[ExtractedEntities]:
         """
         Extract structured entities from an incident description.
 
@@ -149,7 +140,6 @@ class LangChainLLMClient:
             ExtractedEntities object with parsed information, or None if extraction fails
         """
         import time
-
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -173,7 +163,9 @@ If a field cannot be determined, use null for optional fields."""
                 result = structured_llm.invoke(prompt)
 
                 if attempt > 1:
-                    logger.info(f"Successfully extracted entities after {attempt} attempt(s): {result}")
+                    logger.info(
+                        f"Successfully extracted entities after {attempt} attempt(s): {result}"
+                    )
                 else:
                     logger.info(f"Successfully extracted entities: {result}")
 
@@ -190,12 +182,14 @@ If a field cannot be determined, use null for optional fields."""
                 else:
                     logger.error(
                         f"Error extracting entities after {max_retries} attempts: {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
 
             except Exception as e:
                 # Non-retryable exception
-                logger.error(f"Non-retryable error extracting entities: {e}", exc_info=True)
+                logger.error(
+                    f"Non-retryable error extracting entities: {e}", exc_info=True
+                )
                 return None
 
         return None
@@ -204,7 +198,7 @@ If a field cannot be determined, use null for optional fields."""
         self,
         evidence: Dict[str, Any],
         knowledge_graph: Optional[Dict[str, Any]] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
     ) -> Optional[AnalysisResult]:
         """
         Analyze collected evidence and suggest root causes.
@@ -221,7 +215,6 @@ If a field cannot be determined, use null for optional fields."""
             AnalysisResult object with root cause analysis, or None if analysis fails
         """
         import time
-
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -274,20 +267,20 @@ Provide a thorough analysis based on the available evidence."""
                 else:
                     logger.error(
                         f"Error analyzing evidence after {max_retries} attempts: {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
 
             except Exception as e:
                 # Non-retryable exception
-                logger.error(f"Non-retryable error analyzing evidence: {e}", exc_info=True)
+                logger.error(
+                    f"Non-retryable error analyzing evidence: {e}", exc_info=True
+                )
                 return None
 
         return None
 
     def generate_investigation_plan(
-        self,
-        entities: ExtractedEntities,
-        available_tools: List[str]
+        self, entities: ExtractedEntities, available_tools: List[str]
     ) -> List[str]:
         """
         Generate an investigation plan based on extracted entities and available tools.
@@ -320,6 +313,7 @@ Example: ["get_pod_details", "get_pod_logs", "get_pod_events"]"""
 
             # Parse the response to extract tool names
             import json
+
             content = response.content
 
             # Try to extract JSON array from the response
@@ -327,7 +321,7 @@ Example: ["get_pod_details", "get_pod_logs", "get_pod_events"]"""
             end_idx = content.rfind("]")
 
             if start_idx != -1 and end_idx != -1:
-                json_str = content[start_idx:end_idx + 1]
+                json_str = content[start_idx : end_idx + 1]
                 tools = json.loads(json_str)
                 logger.info(f"Generated investigation plan: {tools}")
                 return tools
@@ -342,11 +336,13 @@ Example: ["get_pod_details", "get_pod_logs", "get_pod_events"]"""
     def _format_evidence(self, evidence: Dict[str, Any]) -> str:
         """Format evidence dictionary for prompt inclusion."""
         import json
+
         return json.dumps(evidence, indent=2)
 
     def _format_knowledge_graph(self, knowledge_graph: Dict[str, Any]) -> str:
         """Format knowledge graph for prompt inclusion."""
         import json
+
         return json.dumps(knowledge_graph, indent=2)
 
 

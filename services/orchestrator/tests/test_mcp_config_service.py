@@ -1,4 +1,5 @@
 """Tests for MCP configuration service."""
+
 import pytest
 import yaml
 from app.services.mcp_config_service import MCPConfigService
@@ -27,7 +28,7 @@ def test_load_stdio_config(temp_config_file):
         "local-tools": {
             "command": "npx",
             "args": ["mcp-server-kubernetes"],
-            "transport": "stdio"
+            "transport": "stdio",
         }
     }
     temp_config_file.write_text(yaml.dump(config_data))
@@ -47,9 +48,7 @@ def test_load_http_config(temp_config_file):
         "kubernetes": {
             "url": "http://k8s-mcp:8080/mcp",
             "transport": "streamable_http",
-            "headers": {
-                "Authorization": "Bearer token123"
-            }
+            "headers": {"Authorization": "Bearer token123"},
         }
     }
     temp_config_file.write_text(yaml.dump(config_data))
@@ -69,12 +68,12 @@ def test_load_multiple_servers(temp_config_file):
         "local-tools": {
             "command": "npx",
             "args": ["mcp-server-kubernetes"],
-            "transport": "stdio"
+            "transport": "stdio",
         },
         "prometheus": {
             "url": "http://prometheus:9090/mcp",
-            "transport": "streamable_http"
-        }
+            "transport": "streamable_http",
+        },
     }
     temp_config_file.write_text(yaml.dump(config_data))
 
@@ -101,7 +100,7 @@ def test_invalid_transport_type(temp_config_file):
     config_data = {
         "invalid-server": {
             "url": "http://example.com",
-            "transport": "invalid_transport"
+            "transport": "invalid_transport",
         }
     }
     temp_config_file.write_text(yaml.dump(config_data))
@@ -118,7 +117,7 @@ def test_missing_required_field_stdio(temp_config_file):
         "incomplete-server": {
             "command": "npx",
             # Missing 'args' field
-            "transport": "stdio"
+            "transport": "stdio",
         }
     }
     temp_config_file.write_text(yaml.dump(config_data))
@@ -152,10 +151,7 @@ def test_stdio_with_env_vars(temp_config_file):
             "command": "python",
             "args": ["/path/to/server.py"],
             "transport": "stdio",
-            "env": {
-                "LOG_LEVEL": "DEBUG",
-                "PYTHONPATH": "/custom/path"
-            }
+            "env": {"LOG_LEVEL": "DEBUG", "PYTHONPATH": "/custom/path"},
         }
     }
     temp_config_file.write_text(yaml.dump(config_data))

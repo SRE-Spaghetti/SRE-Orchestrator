@@ -67,7 +67,12 @@ from typing import Any, Dict, List, Optional, Literal, TypedDict, Annotated, Seq
 from datetime import datetime
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage, HumanMessage
+from langchain_core.messages import (
+    BaseMessage,
+    ToolMessage,
+    SystemMessage,
+    HumanMessage,
+)
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
@@ -111,6 +116,7 @@ class InvestigationState(TypedDict):
         Additional fields can be added to this schema in the future without
         breaking existing nodes, as long as they are optional or have defaults.
     """
+
     messages: Annotated[Sequence[BaseMessage], add_messages]
     incident_id: str
     correlation_id: str
@@ -170,7 +176,9 @@ def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
     last_message = messages[-1]
 
     # Check if the last message has tool calls
-    has_tool_calls = hasattr(last_message, "tool_calls") and bool(last_message.tool_calls)
+    has_tool_calls = hasattr(last_message, "tool_calls") and bool(
+        last_message.tool_calls
+    )
 
     if has_tool_calls:
         tool_count = len(last_message.tool_calls)
@@ -183,8 +191,8 @@ def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
                 "incident_id": incident_id,
                 "tool_count": tool_count,
                 "tool_names": tool_names,
-                "routing_decision": "tools"
-            }
+                "routing_decision": "tools",
+            },
         )
         return "tools"
     else:
@@ -194,8 +202,12 @@ def should_continue(state: InvestigationState) -> Literal["tools", "end"]:
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
                 "routing_decision": "end",
-                "final_message_preview": last_message.content[:100] if hasattr(last_message, "content") and last_message.content else "No content"
-            }
+                "final_message_preview": (
+                    last_message.content[:100]
+                    if hasattr(last_message, "content") and last_message.content
+                    else "No content"
+                ),
+            },
         )
         return "end"
 
@@ -231,6 +243,7 @@ def create_agent_node(model_with_tools: Any) -> callable:
         to handle transient LLM failures. All operations are logged with
         correlation ID and incident ID for tracing.
     """
+
     async def agent_node(state: InvestigationState) -> InvestigationState:
         """
         Agent node that invokes the LLM for reasoning and decision-making.
@@ -258,8 +271,8 @@ def create_agent_node(model_with_tools: Any) -> callable:
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
                 "message_count": len(state["messages"]),
-                "investigation_status": state.get("investigation_status", "unknown")
-            }
+                "investigation_status": state.get("investigation_status", "unknown"),
+            },
         )
 
         try:
@@ -270,13 +283,13 @@ def create_agent_node(model_with_tools: Any) -> callable:
 
             # Invoke the LLM with retry logic
             response = await retry_async(
-                invoke_llm,
-                DEFAULT_LLM_RETRY_CONFIG,
-                correlation_id
+                invoke_llm, DEFAULT_LLM_RETRY_CONFIG, correlation_id
             )
 
             # Check if response has tool calls
-            has_tool_calls = hasattr(response, "tool_calls") and bool(response.tool_calls)
+            has_tool_calls = hasattr(response, "tool_calls") and bool(
+                response.tool_calls
+            )
 
             logger.info(
                 "Agent node completed successfully",
@@ -285,8 +298,12 @@ def create_agent_node(model_with_tools: Any) -> callable:
                     "incident_id": incident_id,
                     "has_tool_calls": has_tool_calls,
                     "tool_count": len(response.tool_calls) if has_tool_calls else 0,
-                    "response_length": len(response.content) if hasattr(response, "content") and response.content else 0
-                }
+                    "response_length": (
+                        len(response.content)
+                        if hasattr(response, "content") and response.content
+                        else 0
+                    ),
+                },
             )
 
             # Return partial state update - add_messages reducer will append the response
@@ -300,16 +317,15 @@ def create_agent_node(model_with_tools: Any) -> callable:
                     "incident_id": incident_id,
                     "error": str(e),
                     "error_type": type(e).__name__,
-                    "investigation_status": state.get("investigation_status", "unknown")
+                    "investigation_status": state.get(
+                        "investigation_status", "unknown"
+                    ),
                 },
-                exc_info=True
+                exc_info=True,
             )
 
             # Update investigation status to failed
-            return {
-                "messages": [],
-                "investigation_status": "failed"
-            }
+            return {"messages": [], "investigation_status": "failed"}
 
     return agent_node
 
@@ -370,7 +386,11 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
 
         # Extract tool calls for logging
         tool_calls = []
-        if last_message and hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        if (
+            last_message
+            and hasattr(last_message, "tool_calls")
+            and last_message.tool_calls
+        ):
             tool_calls = last_message.tool_calls
 
         if not tool_calls:
@@ -379,8 +399,8 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                 extra={
                     "correlation_id": correlation_id,
                     "incident_id": incident_id,
-                    "message_count": len(messages)
-                }
+                    "message_count": len(messages),
+                },
             )
             return {"messages": []}
 
@@ -391,8 +411,8 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
                 "tool_count": len(tool_calls),
-                "tool_names": [tc.get("name", "unknown") for tc in tool_calls]
-            }
+                "tool_names": [tc.get("name", "unknown") for tc in tool_calls],
+            },
         )
 
         # Log each tool invocation
@@ -407,8 +427,8 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                     "incident_id": incident_id,
                     "tool_name": tool_name,
                     "tool_args": tool_args,
-                    "tool_call_id": tool_call.get("id", "unknown")
-                }
+                    "tool_call_id": tool_call.get("id", "unknown"),
+                },
             )
 
         # Execute tools using the base ToolNode
@@ -427,8 +447,8 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                     "correlation_id": correlation_id,
                     "incident_id": incident_id,
                     "tool_count": len(tool_calls),
-                    "duration_ms": duration_ms
-                }
+                    "duration_ms": duration_ms,
+                },
             )
 
             # Log individual tool results
@@ -447,8 +467,12 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                             "tool_name": tool_name,
                             "tool_call_id": tool_call_id,
                             "result_length": len(str(content)),
-                            "result_preview": str(content)[:200] if len(str(content)) > 200 else str(content)
-                        }
+                            "result_preview": (
+                                str(content)[:200]
+                                if len(str(content)) > 200
+                                else str(content)
+                            ),
+                        },
                     )
 
             return result
@@ -466,9 +490,9 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                     "tool_names": [tc.get("name", "unknown") for tc in tool_calls],
                     "duration_ms": duration_ms,
                     "error": str(e),
-                    "error_type": type(e).__name__
+                    "error_type": type(e).__name__,
                 },
-                exc_info=True
+                exc_info=True,
             )
 
             # Return error messages for each tool call
@@ -477,7 +501,7 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
                 error_msg = ToolMessage(
                     content=f"Error executing tool: {str(e)}",
                     tool_call_id=tool_call.get("id", "unknown"),
-                    name=tool_call.get("name", "unknown")
+                    name=tool_call.get("name", "unknown"),
                 )
                 error_messages.append(error_msg)
 
@@ -493,10 +517,7 @@ def generate_correlation_id() -> str:
 
 # Default retry configuration for LLM calls
 DEFAULT_LLM_RETRY_CONFIG = RetryConfig(
-    max_attempts=3,
-    initial_delay=1.0,
-    max_delay=10.0,
-    exponential_base=2.0
+    max_attempts=3, initial_delay=1.0, max_delay=10.0, exponential_base=2.0
 )
 
 
@@ -526,7 +547,11 @@ RECOMMENDATIONS: [Actionable recommendations]
 Be thorough but concise. Focus on the most relevant information."""
 
 
-async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
+async def create_investigation_agent_native(
+    mcp_tools: List[Any],
+    llm_config: Dict[str, Any],
+    correlation_id: Optional[str] = None,
+):
     """
     Create a native LangGraph StateGraph agent for incident investigation.
 
@@ -590,7 +615,7 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
             api_key=api_key,
             model=model_name,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
         )
 
         # Bind tools to the model
@@ -603,8 +628,8 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
                 "model": model_name,
                 "tool_count": len(mcp_tools),
                 "tool_names": [tool.name for tool in mcp_tools] if mcp_tools else [],
-                "implementation": "native"
-            }
+                "implementation": "native",
+            },
         )
 
         # Import StateGraph and END
@@ -625,12 +650,7 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
 
         # Add conditional edges from agent using should_continue
         graph.add_conditional_edges(
-            "agent",
-            should_continue,
-            {
-                "tools": "tools",
-                "end": END
-            }
+            "agent", should_continue, {"tools": "tools", "end": END}
         )
 
         # Add edge from tools back to agent
@@ -644,8 +664,8 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
             extra={
                 "correlation_id": correlation_id,
                 "node_count": 2,
-                "nodes": ["agent", "tools"]
-            }
+                "nodes": ["agent", "tools"],
+            },
         )
 
         # Compile the graph to create executable agent
@@ -657,8 +677,8 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
                 "correlation_id": correlation_id,
                 "implementation": "native",
                 "model": model_name,
-                "tool_count": len(mcp_tools)
-            }
+                "tool_count": len(mcp_tools),
+            },
         )
 
         return agent
@@ -670,17 +690,18 @@ async def create_investigation_agent_native(mcp_tools: List[Any], llm_config: Di
                 "correlation_id": correlation_id,
                 "error": str(e),
                 "error_type": type(e).__name__,
-                "implementation": "native"
+                "implementation": "native",
             },
-            exc_info=True
+            exc_info=True,
         )
         raise
 
 
-
-
-
-async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str, Any], correlation_id: Optional[str] = None):
+async def create_investigation_agent(
+    mcp_tools: List[Any],
+    llm_config: Dict[str, Any],
+    correlation_id: Optional[str] = None,
+):
     """
     Create a native LangGraph StateGraph agent for incident investigation.
 
@@ -724,7 +745,9 @@ async def create_investigation_agent(mcp_tools: List[Any], llm_config: Dict[str,
         ...     "investigation_status": "in_progress"
         ... })
     """
-    return await create_investigation_agent_native(mcp_tools, llm_config, correlation_id)
+    return await create_investigation_agent_native(
+        mcp_tools, llm_config, correlation_id
+    )
 
 
 async def investigate_incident(
@@ -732,7 +755,7 @@ async def investigate_incident(
     incident_id: str,
     description: str,
     update_callback: Optional[callable] = None,
-    correlation_id: Optional[str] = None
+    correlation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Execute incident investigation using the ReAct agent.
@@ -775,36 +798,37 @@ async def investigate_incident(
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
                 "description_length": len(description),
-                "timestamp": start_time.isoformat()
-            }
+                "timestamp": start_time.isoformat(),
+            },
         )
 
         # Update status to investigating
         if update_callback:
-            await update_callback(incident_id, "investigating", {
-                "message": "Investigation started",
-                "timestamp": start_time.isoformat(),
-                "correlation_id": correlation_id
-            })
+            await update_callback(
+                incident_id,
+                "investigating",
+                {
+                    "message": "Investigation started",
+                    "timestamp": start_time.isoformat(),
+                    "correlation_id": correlation_id,
+                },
+            )
 
         # Invoke the agent with the incident description
         logger.info(
             "Invoking agent for investigation",
-            extra={
-                "correlation_id": correlation_id,
-                "incident_id": incident_id
-            }
+            extra={"correlation_id": correlation_id, "incident_id": incident_id},
         )
 
         # Create initial state with messages, incident_id, correlation_id, investigation_status
         initial_state = {
             "messages": [
                 SystemMessage(content=INVESTIGATION_SYSTEM_PROMPT),
-                HumanMessage(content=description)
+                HumanMessage(content=description),
             ],
             "incident_id": incident_id,
             "correlation_id": correlation_id,
-            "investigation_status": "in_progress"
+            "investigation_status": "in_progress",
         }
 
         logger.info(
@@ -813,8 +837,8 @@ async def investigate_incident(
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
                 "message_count": len(initial_state["messages"]),
-                "investigation_status": initial_state["investigation_status"]
-            }
+                "investigation_status": initial_state["investigation_status"],
+            },
         )
 
         # Wrap agent invocation with retry logic.
@@ -822,9 +846,7 @@ async def investigate_incident(
             return await agent.ainvoke(initial_state)
 
         result = await retry_async(
-            invoke_agent,
-            DEFAULT_LLM_RETRY_CONFIG,
-            correlation_id
+            invoke_agent, DEFAULT_LLM_RETRY_CONFIG, correlation_id
         )
 
         end_time = datetime.utcnow()
@@ -835,8 +857,8 @@ async def investigate_incident(
             extra={
                 "correlation_id": correlation_id,
                 "incident_id": incident_id,
-                "duration_seconds": duration_seconds
-            }
+                "duration_seconds": duration_seconds,
+            },
         )
 
         # Extract messages from the result
@@ -871,7 +893,7 @@ async def investigate_incident(
                     tool_info = {
                         "tool": tool_call.get("name", "unknown"),
                         "args": tool_call.get("args", {}),
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.utcnow().isoformat(),
                     }
                     tool_calls.append(tool_info)
 
@@ -882,8 +904,8 @@ async def investigate_incident(
                             "correlation_id": correlation_id,
                             "incident_id": incident_id,
                             "tool_name": tool_info["tool"],
-                            "tool_args": tool_info["args"]
-                        }
+                            "tool_args": tool_info["args"],
+                        },
                     )
 
         # Log tool execution results
@@ -898,7 +920,7 @@ async def investigate_incident(
             "tool_calls": tool_calls,
             "status": "completed",
             "correlation_id": correlation_id,
-            "duration_seconds": duration_seconds
+            "duration_seconds": duration_seconds,
         }
 
         logger.info(
@@ -909,8 +931,8 @@ async def investigate_incident(
                 "root_cause": root_cause,
                 "confidence": confidence,
                 "tool_count": len(tool_calls),
-                "duration_seconds": duration_seconds
-            }
+                "duration_seconds": duration_seconds,
+            },
         )
 
         # Update status to completed
@@ -930,9 +952,9 @@ async def investigate_incident(
                 "incident_id": incident_id,
                 "error": str(e),
                 "error_type": type(e).__name__,
-                "duration_seconds": duration_seconds
+                "duration_seconds": duration_seconds,
             },
-            exc_info=True
+            exc_info=True,
         )
 
         error_result = {
@@ -945,21 +967,27 @@ async def investigate_incident(
             "status": "failed",
             "error": str(e),
             "correlation_id": correlation_id,
-            "duration_seconds": duration_seconds
+            "duration_seconds": duration_seconds,
         }
 
         # Update status to failed
         if update_callback:
-            await update_callback(incident_id, "failed", {
-                "error": str(e),
-                "timestamp": end_time.isoformat(),
-                "correlation_id": correlation_id
-            })
+            await update_callback(
+                incident_id,
+                "failed",
+                {
+                    "error": str(e),
+                    "timestamp": end_time.isoformat(),
+                    "correlation_id": correlation_id,
+                },
+            )
 
         return error_result
 
 
-def _log_agent_reasoning_steps(messages: List[Any], correlation_id: str, incident_id: str):
+def _log_agent_reasoning_steps(
+    messages: List[Any], correlation_id: str, incident_id: str
+):
     """
     Log agent reasoning steps from the conversation messages.
 
@@ -980,12 +1008,16 @@ def _log_agent_reasoning_steps(messages: List[Any], correlation_id: str, inciden
                         "correlation_id": correlation_id,
                         "incident_id": incident_id,
                         "step_number": step_number,
-                        "content_preview": msg.content[:200] if len(msg.content) > 200 else msg.content
-                    }
+                        "content_preview": (
+                            msg.content[:200] if len(msg.content) > 200 else msg.content
+                        ),
+                    },
                 )
 
 
-def _log_tool_execution_results(messages: List[Any], correlation_id: str, incident_id: str):
+def _log_tool_execution_results(
+    messages: List[Any], correlation_id: str, incident_id: str
+):
     """
     Log tool execution results from the conversation messages.
 
@@ -1007,8 +1039,10 @@ def _log_tool_execution_results(messages: List[Any], correlation_id: str, incide
                     "incident_id": incident_id,
                     "tool_name": tool_name,
                     "result_length": len(str(content)),
-                    "result_preview": str(content)[:200] if len(str(content)) > 200 else str(content)
-                }
+                    "result_preview": (
+                        str(content)[:200] if len(str(content)) > 200 else str(content)
+                    ),
+                },
             )
 
 
@@ -1036,7 +1070,7 @@ def extract_root_cause(content: str) -> Optional[str]:
     patterns = [
         r"(?:the\s+)?root cause (?:is|appears to be|seems to be)\s+(.+?)(?:\.|$)",
         r"(?:this\s+)?(?:is\s+)?(?:likely\s+)?caused by\s+(.+?)(?:\.|$)",
-        r"(?:the\s+)?issue (?:is|appears to be)\s+(.+?)(?:\.|$)"
+        r"(?:the\s+)?issue (?:is|appears to be)\s+(.+?)(?:\.|$)",
     ]
 
     for pattern in patterns:
@@ -1075,8 +1109,21 @@ def extract_confidence(content: str) -> Literal["high", "medium", "low"]:
     # Fallback: look for confidence indicators in text
     content_lower = content.lower()
 
-    high_indicators = ["definitely", "certainly", "clearly", "obviously", "high confidence"]
-    low_indicators = ["possibly", "maybe", "might", "could be", "low confidence", "uncertain"]
+    high_indicators = [
+        "definitely",
+        "certainly",
+        "clearly",
+        "obviously",
+        "high confidence",
+    ]
+    low_indicators = [
+        "possibly",
+        "maybe",
+        "might",
+        "could be",
+        "low confidence",
+        "uncertain",
+    ]
 
     for indicator in high_indicators:
         if indicator in content_lower:
@@ -1112,28 +1159,36 @@ def extract_evidence(messages: List[Any]) -> List[Dict[str, Any]]:
 
                 # Look for the corresponding tool response in next messages
                 tool_response = None
-                for next_msg in messages[i + 1:]:
+                for next_msg in messages[i + 1 :]:
                     if hasattr(next_msg, "content") and next_msg.content:
                         tool_response = next_msg.content
                         break
 
-                evidence.append({
-                    "source": tool_name,
-                    "args": tool_args,
-                    "content": tool_response or "No response",
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+                evidence.append(
+                    {
+                        "source": tool_name,
+                        "args": tool_args,
+                        "content": tool_response or "No response",
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
 
     # Also extract explicit EVIDENCE markers from final response
     for msg in messages:
         if hasattr(msg, "content") and msg.content:
-            match = re.search(r"EVIDENCE:\s*(.+?)(?:\n\n|\n[A-Z]+:|$)", msg.content, re.IGNORECASE | re.DOTALL)
+            match = re.search(
+                r"EVIDENCE:\s*(.+?)(?:\n\n|\n[A-Z]+:|$)",
+                msg.content,
+                re.IGNORECASE | re.DOTALL,
+            )
             if match:
-                evidence.append({
-                    "source": "agent_analysis",
-                    "content": match.group(1).strip(),
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+                evidence.append(
+                    {
+                        "source": "agent_analysis",
+                        "content": match.group(1).strip(),
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
 
     return evidence
 
@@ -1156,7 +1211,9 @@ def extract_recommendations(content: str) -> List[str]:
     recommendations = []
 
     # Try to find explicit RECOMMENDATIONS marker
-    match = re.search(r"RECOMMENDATIONS?:\s*(.+?)(?:\n\n|$)", content, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"RECOMMENDATIONS?:\s*(.+?)(?:\n\n|$)", content, re.IGNORECASE | re.DOTALL
+    )
     if match:
         rec_text = match.group(1).strip()
 

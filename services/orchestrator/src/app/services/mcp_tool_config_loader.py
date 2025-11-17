@@ -51,7 +51,7 @@ class MCPToolConfigLoader:
             return {}
 
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, "r") as f:
                 config = yaml.safe_load(f)
 
             if config is None:
@@ -59,7 +59,9 @@ class MCPToolConfigLoader:
                 return {}
 
             if not isinstance(config, dict):
-                logger.error(f"Invalid MCP config format: expected dict, got {type(config)}")
+                logger.error(
+                    f"Invalid MCP config format: expected dict, got {type(config)}"
+                )
                 return {}
 
             # Expand environment variables in the configuration
@@ -111,27 +113,39 @@ class MCPToolConfigLoader:
 
         for server_name, server_config in config.items():
             if not isinstance(server_config, dict):
-                logger.error(f"Invalid config for server '{server_name}': must be a dict")
+                logger.error(
+                    f"Invalid config for server '{server_name}': must be a dict"
+                )
                 return False
 
-            transport = server_config.get('transport')
+            transport = server_config.get("transport")
             if not transport:
-                logger.error(f"Server '{server_name}' missing required 'transport' field")
+                logger.error(
+                    f"Server '{server_name}' missing required 'transport' field"
+                )
                 return False
 
-            if transport == 'streamable_http':
-                if 'url' not in server_config:
-                    logger.error(f"Server '{server_name}' with HTTP transport missing 'url' field")
+            if transport == "streamable_http":
+                if "url" not in server_config:
+                    logger.error(
+                        f"Server '{server_name}' with HTTP transport missing 'url' field"
+                    )
                     return False
-            elif transport == 'stdio':
-                if 'command' not in server_config:
-                    logger.error(f"Server '{server_name}' with stdio transport missing 'command' field")
+            elif transport == "stdio":
+                if "command" not in server_config:
+                    logger.error(
+                        f"Server '{server_name}' with stdio transport missing 'command' field"
+                    )
                     return False
-                if 'args' not in server_config:
-                    logger.error(f"Server '{server_name}' with stdio transport missing 'args' field")
+                if "args" not in server_config:
+                    logger.error(
+                        f"Server '{server_name}' with stdio transport missing 'args' field"
+                    )
                     return False
             else:
-                logger.error(f"Server '{server_name}' has unsupported transport type: {transport}")
+                logger.error(
+                    f"Server '{server_name}' has unsupported transport type: {transport}"
+                )
                 return False
 
         return True

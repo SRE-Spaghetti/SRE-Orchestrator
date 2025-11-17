@@ -9,7 +9,7 @@ from sre_orchestrator_cli.client import (
     OrchestratorClientError,
     ConnectionError,
     AuthenticationError,
-    NotFoundError
+    NotFoundError,
 )
 
 
@@ -65,8 +65,7 @@ class TestOrchestratorClient:
 
             assert incident_id == "incident-123"
             mock_client.post.assert_called_once_with(
-                "/api/v1/incidents",
-                json={"description": "Pod is crashing"}
+                "/api/v1/incidents", json={"description": "Pod is crashing"}
             )
 
     @pytest.mark.asyncio
@@ -120,7 +119,7 @@ class TestOrchestratorClient:
         mock_response.json.return_value = {
             "id": "incident-123",
             "status": "completed",
-            "root_cause": "Memory issue"
+            "root_cause": "Memory issue",
         }
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -159,7 +158,7 @@ class TestOrchestratorClient:
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {"id": "incident-1", "status": "completed"},
-            {"id": "incident-2", "status": "investigating"}
+            {"id": "incident-2", "status": "investigating"},
         ]
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -173,8 +172,7 @@ class TestOrchestratorClient:
             assert len(incidents) == 2
             assert incidents[0]["id"] == "incident-1"
             mock_client.get.assert_called_once_with(
-                "/api/v1/incidents",
-                params={"limit": 10}
+                "/api/v1/incidents", params={"limit": 10}
             )
 
     @pytest.mark.asyncio
@@ -211,7 +209,6 @@ class TestOrchestratorClient:
             assert client._client is None
 
 
-
 class TestAsyncIncidentWorkflow:
     """Tests for async incident workflow in CLI client."""
 
@@ -222,7 +219,7 @@ class TestAsyncIncidentWorkflow:
         mock_response.status_code = 202
         mock_response.json.return_value = {
             "incident_id": "test-incident-123",
-            "status": "pending"
+            "status": "pending",
         }
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -236,8 +233,7 @@ class TestAsyncIncidentWorkflow:
             assert result["incident_id"] == "test-incident-123"
             assert result["status"] == "pending"
             mock_client.post.assert_called_once_with(
-                "/api/v1/incidents",
-                json={"description": "Pod is crashing"}
+                "/api/v1/incidents", json={"description": "Pod is crashing"}
             )
 
     @pytest.mark.asyncio
@@ -247,7 +243,12 @@ class TestAsyncIncidentWorkflow:
         mock_responses = [
             {"id": "incident-123", "status": "pending", "description": "Test"},
             {"id": "incident-123", "status": "in_progress", "description": "Test"},
-            {"id": "incident-123", "status": "completed", "description": "Test", "suggested_root_cause": "Memory leak"}
+            {
+                "id": "incident-123",
+                "status": "completed",
+                "description": "Test",
+                "suggested_root_cause": "Memory leak",
+            },
         ]
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -255,11 +256,14 @@ class TestAsyncIncidentWorkflow:
 
             # Create side effect that returns different responses
             call_count = 0
+
             async def mock_get(*args, **kwargs):
                 nonlocal call_count
                 response = Mock()
                 response.status_code = 200
-                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                response.json.return_value = mock_responses[
+                    min(call_count, len(mock_responses) - 1)
+                ]
                 call_count += 1
                 return response
 
@@ -267,7 +271,9 @@ class TestAsyncIncidentWorkflow:
             mock_client_class.return_value = mock_client
 
             client = OrchestratorClient(base_url, api_key)
-            result = await client.poll_incident("incident-123", interval=0.1, timeout=10.0)
+            result = await client.poll_incident(
+                "incident-123", interval=0.1, timeout=10.0
+            )
 
             assert result["status"] == "completed"
             assert result["suggested_root_cause"] == "Memory leak"
@@ -282,7 +288,7 @@ class TestAsyncIncidentWorkflow:
             "id": "incident-123",
             "status": "failed",
             "description": "Test",
-            "error_message": "Investigation timeout"
+            "error_message": "Investigation timeout",
         }
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -291,7 +297,9 @@ class TestAsyncIncidentWorkflow:
             mock_client_class.return_value = mock_client
 
             client = OrchestratorClient(base_url, api_key)
-            result = await client.poll_incident("incident-123", interval=0.1, timeout=10.0)
+            result = await client.poll_incident(
+                "incident-123", interval=0.1, timeout=10.0
+            )
 
             assert result["status"] == "failed"
             assert result["error_message"] == "Investigation timeout"
@@ -304,7 +312,7 @@ class TestAsyncIncidentWorkflow:
         mock_response.json.return_value = {
             "id": "incident-123",
             "status": "in_progress",
-            "description": "Test"
+            "description": "Test",
         }
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -314,7 +322,9 @@ class TestAsyncIncidentWorkflow:
 
             client = OrchestratorClient(base_url, api_key)
 
-            with pytest.raises(TimeoutError, match="Polling timed out after 0.5 seconds"):
+            with pytest.raises(
+                TimeoutError, match="Polling timed out after 0.5 seconds"
+            ):
                 await client.poll_incident("incident-123", interval=0.1, timeout=0.5)
 
     @pytest.mark.asyncio
@@ -337,10 +347,11 @@ class TestAsyncIncidentWorkflow:
         """Test poll_incident() calls callback on each poll."""
         mock_responses = [
             {"id": "incident-123", "status": "pending", "description": "Test"},
-            {"id": "incident-123", "status": "completed", "description": "Test"}
+            {"id": "incident-123", "status": "completed", "description": "Test"},
         ]
 
         callback_calls = []
+
         def test_callback(incident):
             callback_calls.append(incident["status"])
 
@@ -348,11 +359,14 @@ class TestAsyncIncidentWorkflow:
             mock_client = AsyncMock()
 
             call_count = 0
+
             async def mock_get(*args, **kwargs):
                 nonlocal call_count
                 response = Mock()
                 response.status_code = 200
-                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                response.json.return_value = mock_responses[
+                    min(call_count, len(mock_responses) - 1)
+                ]
                 call_count += 1
                 return response
 
@@ -360,7 +374,9 @@ class TestAsyncIncidentWorkflow:
             mock_client_class.return_value = mock_client
 
             client = OrchestratorClient(base_url, api_key)
-            await client.poll_incident("incident-123", interval=0.1, timeout=10.0, callback=test_callback)
+            await client.poll_incident(
+                "incident-123", interval=0.1, timeout=10.0, callback=test_callback
+            )
 
             assert callback_calls == ["pending", "completed"]
 
@@ -371,7 +387,7 @@ class TestAsyncIncidentWorkflow:
 
         mock_responses = [
             {"id": "incident-123", "status": "pending", "description": "Test"},
-            {"id": "incident-123", "status": "completed", "description": "Test"}
+            {"id": "incident-123", "status": "completed", "description": "Test"},
         ]
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -385,7 +401,9 @@ class TestAsyncIncidentWorkflow:
                 call_times.append(time.time())
                 response = Mock()
                 response.status_code = 200
-                response.json.return_value = mock_responses[min(call_count, len(mock_responses) - 1)]
+                response.json.return_value = mock_responses[
+                    min(call_count, len(mock_responses) - 1)
+                ]
                 call_count += 1
                 return response
 
@@ -398,4 +416,6 @@ class TestAsyncIncidentWorkflow:
             # Check that there was at least 0.2 seconds between calls
             if len(call_times) > 1:
                 time_diff = call_times[1] - call_times[0]
-                assert time_diff >= 0.2, f"Interval was {time_diff:.3f}s, expected >= 0.2s"
+                assert (
+                    time_diff >= 0.2
+                ), f"Interval was {time_diff:.3f}s, expected >= 0.2s"

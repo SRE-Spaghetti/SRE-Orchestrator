@@ -7,6 +7,7 @@ from enum import Enum
 
 class IncidentStatus(str, Enum):
     """Enumeration of possible incident investigation statuses"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -24,6 +25,7 @@ class NewIncidentResponse(BaseModel):
 
 class InvestigationStep(BaseModel):
     """Track each step in the investigation workflow"""
+
     step_name: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     status: Literal["started", "completed", "failed"]

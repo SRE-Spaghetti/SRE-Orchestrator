@@ -28,7 +28,7 @@ def mock_llm_config():
         "api_key": "test-api-key",
         "model_name": "gpt-4",
         "temperature": 0.7,
-        "max_tokens": 2000
+        "max_tokens": 2000,
     }
 
 
@@ -124,9 +124,7 @@ class TestInvestigateIncidentAsync:
             inc.completed_at = datetime.utcnow()
             inc.evidence = {"tool_calls": [], "reasoning": "Test reasoning"}
 
-        with patch.object(
-            repository, "_investigate_incident", new=mock_investigate
-        ):
+        with patch.object(repository, "_investigate_incident", new=mock_investigate):
             await repository.investigate_incident_async(
                 incident.id, mock_mcp_tools, mock_llm_config
             )
@@ -161,7 +159,9 @@ class TestInvestigateIncidentAsync:
             # Verify incident was marked as failed
             updated_incident = repository.get_by_id(incident.id)
             assert updated_incident.status == "failed"
-            assert updated_incident.error_message == "Investigation failed due to timeout"
+            assert (
+                updated_incident.error_message == "Investigation failed due to timeout"
+            )
             assert updated_incident.completed_at is not None
 
     @pytest.mark.asyncio
@@ -185,7 +185,8 @@ class TestInvestigateIncidentAsync:
             # Verify failed step was added
             updated_incident = repository.get_by_id(incident.id)
             failed_steps = [
-                step for step in updated_incident.investigation_steps
+                step
+                for step in updated_incident.investigation_steps
                 if step.step_name == "investigation_failed"
             ]
             assert len(failed_steps) == 1

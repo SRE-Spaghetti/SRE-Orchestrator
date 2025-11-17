@@ -9,7 +9,7 @@ from app.services.langchain_llm_client import (
     LangChainLLMClient,
     ExtractedEntities,
     AnalysisResult,
-    get_langchain_llm_client
+    get_langchain_llm_client,
 )
 
 
@@ -18,13 +18,16 @@ class TestLLMConfig:
 
     def test_from_env_success(self):
         """Test creating config from environment variables."""
-        with patch.dict(os.environ, {
-            "LLM_BASE_URL": "https://api.example.com/v1",
-            "LLM_API_KEY": "test-key-123",
-            "LLM_MODEL_NAME": "gpt-4",
-            "LLM_TEMPERATURE": "0.5",
-            "LLM_MAX_TOKENS": "1000"
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "LLM_BASE_URL": "https://api.example.com/v1",
+                "LLM_API_KEY": "test-key-123",
+                "LLM_MODEL_NAME": "gpt-4",
+                "LLM_TEMPERATURE": "0.5",
+                "LLM_MAX_TOKENS": "1000",
+            },
+        ):
             config = LLMConfig.from_env()
 
             assert config.base_url == "https://api.example.com/v1"
@@ -35,10 +38,14 @@ class TestLLMConfig:
 
     def test_from_env_defaults(self):
         """Test config defaults when optional env vars not set."""
-        with patch.dict(os.environ, {
-            "LLM_BASE_URL": "https://api.example.com/v1",
-            "LLM_API_KEY": "test-key-123"
-        }, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "LLM_BASE_URL": "https://api.example.com/v1",
+                "LLM_API_KEY": "test-key-123",
+            },
+            clear=True,
+        ):
             config = LLMConfig.from_env()
 
             assert config.model_name == "gpt-4"
@@ -53,7 +60,9 @@ class TestLLMConfig:
 
     def test_from_env_missing_api_key(self):
         """Test error when LLM_API_KEY not set."""
-        with patch.dict(os.environ, {"LLM_BASE_URL": "https://api.example.com"}, clear=True):
+        with patch.dict(
+            os.environ, {"LLM_BASE_URL": "https://api.example.com"}, clear=True
+        ):
             with pytest.raises(ValueError, match="LLM_API_KEY"):
                 LLMConfig.from_env()
 
@@ -69,7 +78,7 @@ class TestLangChainLLMClient:
             api_key="test-key-123",
             model_name="gpt-4",
             temperature=0.7,
-            max_tokens=2000
+            max_tokens=2000,
         )
 
     @pytest.fixture
@@ -88,7 +97,7 @@ class TestLangChainLLMClient:
                 api_key=config.api_key,
                 model=config.model_name,
                 temperature=config.temperature,
-                max_tokens=config.max_tokens
+                max_tokens=config.max_tokens,
             )
             assert client.config == config
 
@@ -99,7 +108,7 @@ class TestLangChainLLMClient:
             pod_name="test-pod-123",
             namespace="production",
             error_summary="Pod is crashing",
-            error_type="crash"
+            error_type="crash",
         )
 
         mock_structured_llm = Mock()
@@ -120,14 +129,14 @@ class TestLangChainLLMClient:
             pod_name="test-pod",
             namespace="default",
             error_summary="Error",
-            error_type="crash"
+            error_type="crash",
         )
 
         mock_structured_llm = Mock()
         # First call fails, second succeeds
         mock_structured_llm.invoke.side_effect = [
             ConnectionError("Temporary failure"),
-            mock_result
+            mock_result,
         ]
         client.llm.with_structured_output = Mock(return_value=mock_structured_llm)
 
@@ -166,7 +175,7 @@ class TestLangChainLLMClient:
             root_cause="Pod OOMKilled due to memory limit",
             confidence="high",
             reasoning="Pod logs show OOM errors and memory usage exceeded limits",
-            recommendations=["Increase memory limits", "Optimize memory usage"]
+            recommendations=["Increase memory limits", "Optimize memory usage"],
         )
 
         mock_structured_llm = Mock()
@@ -175,7 +184,7 @@ class TestLangChainLLMClient:
 
         evidence = {
             "pod_details": {"status": "OOMKilled"},
-            "pod_logs": "Out of memory error"
+            "pod_logs": "Out of memory error",
         }
 
         result = client.analyze_evidence(evidence)
@@ -192,7 +201,7 @@ class TestLangChainLLMClient:
             root_cause="Known issue",
             confidence="high",
             reasoning="Matches known pattern",
-            recommendations=["Apply fix"]
+            recommendations=["Apply fix"],
         )
 
         mock_structured_llm = Mock()
@@ -215,14 +224,11 @@ class TestLangChainLLMClient:
             root_cause="Test cause",
             confidence="medium",
             reasoning="Test reasoning",
-            recommendations=[]
+            recommendations=[],
         )
 
         mock_structured_llm = Mock()
-        mock_structured_llm.invoke.side_effect = [
-            TimeoutError("Timeout"),
-            mock_result
-        ]
+        mock_structured_llm.invoke.side_effect = [TimeoutError("Timeout"), mock_result]
         client.llm.with_structured_output = Mock(return_value=mock_structured_llm)
 
         with patch("time.sleep"):
@@ -241,7 +247,7 @@ class TestLangChainLLMClient:
             pod_name="test-pod",
             namespace="default",
             error_summary="Pod crashing",
-            error_type="crash"
+            error_type="crash",
         )
         available_tools = ["get_pod_details", "get_pod_logs", "get_pod_events"]
 
@@ -260,7 +266,7 @@ class TestLangChainLLMClient:
             pod_name="test-pod",
             namespace="default",
             error_summary="Error",
-            error_type="crash"
+            error_type="crash",
         )
 
         result = client.generate_investigation_plan(entities, [])
@@ -275,7 +281,7 @@ class TestLangChainLLMClient:
             pod_name="test-pod",
             namespace="default",
             error_summary="Error",
-            error_type="crash"
+            error_type="crash",
         )
 
         result = client.generate_investigation_plan(entities, [])
@@ -285,13 +291,14 @@ class TestLangChainLLMClient:
 
 def test_get_langchain_llm_client_singleton():
     """Test singleton instance management."""
-    with patch.dict(os.environ, {
-        "LLM_BASE_URL": "https://api.example.com/v1",
-        "LLM_API_KEY": "test-key"
-    }):
+    with patch.dict(
+        os.environ,
+        {"LLM_BASE_URL": "https://api.example.com/v1", "LLM_API_KEY": "test-key"},
+    ):
         with patch("app.services.langchain_llm_client.ChatOpenAI"):
             # Reset singleton
             import app.services.langchain_llm_client as module
+
             module._langchain_llm_client_instance = None
 
             client1 = get_langchain_llm_client()

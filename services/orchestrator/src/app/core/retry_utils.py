@@ -12,7 +12,7 @@ from functools import wraps
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class RetryConfig:
@@ -24,7 +24,7 @@ class RetryConfig:
         initial_delay: float = 1.0,
         max_delay: float = 10.0,
         exponential_base: float = 2.0,
-        retryable_exceptions: Optional[List[type]] = None
+        retryable_exceptions: Optional[List[type]] = None,
     ):
         """
         Initialize retry configuration.
@@ -78,8 +78,8 @@ async def retry_async(
                     "correlation_id": correlation_id,
                     "function": func.__name__,
                     "attempt": attempt,
-                    "max_attempts": config.max_attempts
-                }
+                    "max_attempts": config.max_attempts,
+                },
             )
 
             result = await func(*args, **kwargs)
@@ -90,8 +90,8 @@ async def retry_async(
                     extra={
                         "correlation_id": correlation_id,
                         "function": func.__name__,
-                        "attempt": attempt
-                    }
+                        "attempt": attempt,
+                    },
                 )
 
             return result
@@ -101,8 +101,7 @@ async def retry_async(
 
             # Check if this exception is retryable
             is_retryable = any(
-                isinstance(e, exc_type)
-                for exc_type in config.retryable_exceptions
+                isinstance(e, exc_type) for exc_type in config.retryable_exceptions
             )
 
             if not is_retryable:
@@ -113,9 +112,9 @@ async def retry_async(
                         "function": func.__name__,
                         "attempt": attempt,
                         "error": str(e),
-                        "error_type": type(e).__name__
+                        "error_type": type(e).__name__,
                     },
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
 
@@ -129,8 +128,8 @@ async def retry_async(
                         "max_attempts": config.max_attempts,
                         "error": str(e),
                         "error_type": type(e).__name__,
-                        "retry_delay": delay
-                    }
+                        "retry_delay": delay,
+                    },
                 )
 
                 await asyncio.sleep(delay)
@@ -145,9 +144,9 @@ async def retry_async(
                         "function": func.__name__,
                         "attempt": attempt,
                         "error": str(e),
-                        "error_type": type(e).__name__
+                        "error_type": type(e).__name__,
                     },
-                    exc_info=True
+                    exc_info=True,
                 )
 
     # All retries exhausted
@@ -171,15 +170,9 @@ def with_retry(config: Optional[RetryConfig] = None):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Try to extract correlation_id from kwargs
-            correlation_id = kwargs.get('correlation_id')
+            correlation_id = kwargs.get("correlation_id")
 
-            return await retry_async(
-                func,
-                config,
-                correlation_id,
-                *args,
-                **kwargs
-            )
+            return await retry_async(func, config, correlation_id, *args, **kwargs)
 
         return wrapper
 

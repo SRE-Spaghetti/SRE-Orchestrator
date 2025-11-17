@@ -37,7 +37,7 @@ class MCPConnectionManager:
         logger.info(f"Found {len(self._config)} MCP servers to connect to.")
         for server_name, server_config in self._config.items():
             # Only connect to HTTP-based servers (stdio servers are handled by MCPToolManager)
-            if server_config.get('transport') == 'streamable_http':
+            if server_config.get("transport") == "streamable_http":
                 await self._connect_with_retry(server_name, server_config)
 
     async def _connect_with_retry(
@@ -55,7 +55,7 @@ class MCPConnectionManager:
             max_retries: The maximum number of retries.
             delay: The initial delay between retries.
         """
-        server_url = server_config.get('url', '')
+        server_url = server_config.get("url", "")
         logger.info(
             f"Attempting to connect to MCP server '{server_name}' at URL: {server_url}"
         )
@@ -86,8 +86,8 @@ class MCPConnectionManager:
             server_name: The name of the server.
             server_config: The server configuration dictionary.
         """
-        server_url = server_config.get('url', '')
-        headers = server_config.get('headers', {})
+        server_url = server_config.get("url", "")
+        headers = server_config.get("headers", {})
 
         async with create_mcp_http_client() as client:
             request_headers = {

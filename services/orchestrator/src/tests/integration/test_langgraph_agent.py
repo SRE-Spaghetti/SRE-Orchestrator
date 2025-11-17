@@ -10,7 +10,7 @@ from app.core.investigation_agent import (
     extract_confidence,
     extract_evidence,
     extract_recommendations,
-    generate_correlation_id
+    generate_correlation_id,
 )
 
 
@@ -22,7 +22,7 @@ def llm_config():
         "api_key": "test-key-123",
         "model_name": "gpt-4",
         "temperature": 0.7,
-        "max_tokens": 2000
+        "max_tokens": 2000,
     }
 
 
@@ -47,14 +47,14 @@ class TestCreateInvestigationAgent:
     async def test_create_agent_success(self, llm_config, mock_tools):
         """Test successful agent creation."""
         with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat:
-            with patch("app.core.investigation_agent.create_react_agent") as mock_create:
+            with patch(
+                "app.core.investigation_agent.create_react_agent"
+            ) as mock_create:
                 mock_agent = Mock()
                 mock_create.return_value = mock_agent
 
                 agent = await create_investigation_agent(
-                    mock_tools,
-                    llm_config,
-                    correlation_id="test-123"
+                    mock_tools, llm_config, correlation_id="test-123"
                 )
 
                 assert agent == mock_agent
@@ -86,10 +86,7 @@ class TestCreateInvestigationAgent:
     @pytest.mark.asyncio
     async def test_create_agent_with_defaults(self, mock_tools):
         """Test agent creation uses defaults for optional config."""
-        config = {
-            "base_url": "https://api.example.com/v1",
-            "api_key": "test-key"
-        }
+        config = {"base_url": "https://api.example.com/v1", "api_key": "test-key"}
 
         with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat:
             with patch("app.core.investigation_agent.create_react_agent"):
@@ -147,11 +144,14 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
             mock_agent,
             "incident-123",
             "Pod test-pod is crashing",
-            correlation_id="test-123"
+            correlation_id="test-123",
         )
 
         assert result["status"] == "completed"
-        assert result["root_cause"] == "Pod is in CrashLoopBackOff due to application startup failure"
+        assert (
+            result["root_cause"]
+            == "Pod is in CrashLoopBackOff due to application startup failure"
+        )
         assert result["confidence"] == "high"
         assert len(result["evidence"]) > 0
         assert len(result["recommendations"]) > 0
@@ -161,7 +161,9 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
         mock_agent.ainvoke.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_investigate_incident_with_callback(self, mock_agent, mock_agent_response):
+    async def test_investigate_incident_with_callback(
+        self, mock_agent, mock_agent_response
+    ):
         """Test investigation with status update callback."""
         mock_agent.ainvoke.return_value = mock_agent_response
         callback = AsyncMock()
@@ -171,7 +173,7 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
             "incident-123",
             "Pod test-pod is crashing",
             update_callback=callback,
-            correlation_id="test-123"
+            correlation_id="test-123",
         )
 
         assert result["status"] == "completed"
@@ -197,7 +199,7 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
             mock_agent,
             "incident-123",
             "Pod test-pod is crashing",
-            correlation_id="test-123"
+            correlation_id="test-123",
         )
 
         assert result["status"] == "failed"
@@ -207,12 +209,14 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
         assert result["correlation_id"] == "test-123"
 
     @pytest.mark.asyncio
-    async def test_investigate_incident_with_retry(self, mock_agent, mock_agent_response):
+    async def test_investigate_incident_with_retry(
+        self, mock_agent, mock_agent_response
+    ):
         """Test investigation with retry on transient failure."""
         # First call fails, second succeeds
         mock_agent.ainvoke.side_effect = [
             ConnectionError("Temporary failure"),
-            mock_agent_response
+            mock_agent_response,
         ]
 
         with patch("time.sleep"):  # Skip actual sleep
@@ -220,21 +224,21 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
                 mock_agent,
                 "incident-123",
                 "Pod test-pod is crashing",
-                correlation_id="test-123"
+                correlation_id="test-123",
             )
 
         assert result["status"] == "completed"
         assert mock_agent.ainvoke.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_investigate_incident_generates_correlation_id(self, mock_agent, mock_agent_response):
+    async def test_investigate_incident_generates_correlation_id(
+        self, mock_agent, mock_agent_response
+    ):
         """Test investigation generates correlation ID if not provided."""
         mock_agent.ainvoke.return_value = mock_agent_response
 
         result = await investigate_incident(
-            mock_agent,
-            "incident-123",
-            "Pod test-pod is crashing"
+            mock_agent, "incident-123", "Pod test-pod is crashing"
         )
 
         assert "correlation_id" in result
@@ -250,7 +254,7 @@ RECOMMENDATIONS: Check application logs for startup errors, verify configuration
             mock_agent,
             "incident-123",
             "Pod test-pod is crashing",
-            correlation_id="test-123"
+            correlation_id="test-123",
         )
 
         assert result["status"] == "failed"
@@ -273,7 +277,9 @@ This is the primary issue."""
 
     def test_extract_root_cause_pattern_match(self):
         """Test extracting root cause with pattern matching."""
-        content = "The root cause is insufficient memory allocation for the application."
+        content = (
+            "The root cause is insufficient memory allocation for the application."
+        )
 
         result = extract_root_cause(content)
         assert "insufficient memory allocation" in result

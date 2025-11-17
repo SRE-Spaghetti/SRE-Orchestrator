@@ -12,13 +12,13 @@ def mcp_config():
     return {
         "kubernetes": {
             "url": "http://k8s-mcp-server:8080/mcp",
-            "transport": "streamable_http"
+            "transport": "streamable_http",
         },
         "prometheus": {
             "command": "python",
             "args": ["/path/to/prometheus_server.py"],
-            "transport": "stdio"
-        }
+            "transport": "stdio",
+        },
     }
 
 
@@ -58,7 +58,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_initialize_success(self, mcp_config, mock_tools):
         """Test successful initialization with tool discovery."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -85,7 +87,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_initialize_failure(self, mcp_config):
         """Test initialization failure."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.side_effect = Exception("Connection failed")
             mock_client_class.return_value = mock_client
@@ -101,7 +105,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_initialize_idempotent(self, mcp_config, mock_tools):
         """Test that initialize can be called multiple times safely."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -118,7 +124,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_get_tools_auto_initialize(self, mcp_config, mock_tools):
         """Test get_tools auto-initializes if not initialized."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -132,7 +140,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_get_tools_when_initialized(self, mcp_config, mock_tools):
         """Test get_tools returns cached tools when already initialized."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -149,7 +159,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_cleanup_success(self, mcp_config, mock_tools):
         """Test successful cleanup."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client.__aexit__ = AsyncMock()
@@ -176,7 +188,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_cleanup_with_error(self, mcp_config, mock_tools):
         """Test cleanup handles errors gracefully."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client.__aexit__ = AsyncMock(side_effect=Exception("Cleanup error"))
@@ -194,7 +208,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_execute_tool_with_logging_success(self, mcp_config, mock_tools):
         """Test successful tool execution with logging."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -208,19 +224,22 @@ class TestMCPToolManager:
             result = await manager.execute_tool_with_logging(
                 "get_pod_details",
                 {"pod_name": "test-pod", "namespace": "default"},
-                correlation_id="test-123"
+                correlation_id="test-123",
             )
 
             assert result == {"status": "Running"}
-            mock_tools[0].ainvoke.assert_called_once_with({
-                "pod_name": "test-pod",
-                "namespace": "default"
-            })
+            mock_tools[0].ainvoke.assert_called_once_with(
+                {"pod_name": "test-pod", "namespace": "default"}
+            )
 
     @pytest.mark.asyncio
-    async def test_execute_tool_with_logging_tool_not_found(self, mcp_config, mock_tools):
+    async def test_execute_tool_with_logging_tool_not_found(
+        self, mcp_config, mock_tools
+    ):
         """Test tool execution with non-existent tool."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
@@ -230,21 +249,25 @@ class TestMCPToolManager:
 
             with pytest.raises(ValueError, match="Tool 'non_existent' not found"):
                 await manager.execute_tool_with_logging(
-                    "non_existent",
-                    {},
-                    correlation_id="test-123"
+                    "non_existent", {}, correlation_id="test-123"
                 )
 
     @pytest.mark.asyncio
-    async def test_execute_tool_with_logging_execution_error(self, mcp_config, mock_tools):
+    async def test_execute_tool_with_logging_execution_error(
+        self, mcp_config, mock_tools
+    ):
         """Test tool execution with execution error."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
 
             # Setup tool to raise error
-            mock_tools[0].ainvoke = AsyncMock(side_effect=Exception("Tool execution failed"))
+            mock_tools[0].ainvoke = AsyncMock(
+                side_effect=Exception("Tool execution failed")
+            )
 
             manager = MCPToolManager(mcp_config)
             await manager.initialize()
@@ -253,7 +276,7 @@ class TestMCPToolManager:
                 await manager.execute_tool_with_logging(
                     "get_pod_details",
                     {"pod_name": "test-pod"},
-                    correlation_id="test-123"
+                    correlation_id="test-123",
                 )
 
     def test_get_tool_count_not_initialized(self, mcp_config):
@@ -269,7 +292,9 @@ class TestMCPToolManager:
     @pytest.mark.asyncio
     async def test_get_tool_names_after_initialization(self, mcp_config, mock_tools):
         """Test get_tool_names after initialization."""
-        with patch("app.services.mcp_tool_manager.MultiServerMCPClient") as mock_client_class:
+        with patch(
+            "app.services.mcp_tool_manager.MultiServerMCPClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.get_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client

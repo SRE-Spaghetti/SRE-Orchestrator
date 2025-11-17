@@ -13,8 +13,7 @@ class Session:
         """Initialize a new session."""
         self.history = InMemoryHistory()
         self.prompt_session = PromptSession(
-            history=self.history,
-            auto_suggest=AutoSuggestFromHistory()
+            history=self.history, auto_suggest=AutoSuggestFromHistory()
         )
         self.current_incident_id: Optional[str] = None
         self.incidents: List[str] = []

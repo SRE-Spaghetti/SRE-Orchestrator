@@ -29,7 +29,9 @@ class TestConfig:
     def test_initialization_with_existing_file(self, temp_config_file):
         """Test initialization with existing config file."""
         # Create config file
-        temp_config_file.write_text("orchestrator_url: http://localhost:8000\napi_key: test-key")
+        temp_config_file.write_text(
+            "orchestrator_url: http://localhost:8000\napi_key: test-key"
+        )
 
         config = Config(config_file=temp_config_file)
 

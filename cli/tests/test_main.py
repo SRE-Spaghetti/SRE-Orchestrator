@@ -19,11 +19,11 @@ def mock_config():
     config = Mock()
     config.get.side_effect = lambda key: {
         "orchestrator_url": "http://localhost:8000",
-        "api_key": "test-key"
+        "api_key": "test-key",
     }.get(key)
     config.get_all.return_value = {
         "orchestrator_url": "http://localhost:8000",
-        "api_key": "test-key"
+        "api_key": "test-key",
     }
     return config
 
@@ -35,20 +35,24 @@ class TestInvestigateCommand:
     async def test_investigate_success(self, runner, mock_config):
         """Test successful investigation."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = "incident-123"
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
                     "status": "completed",
                     "root_cause": "Memory issue",
-                    "confidence": "high"
+                    "confidence": "high",
                 }
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
                 mock_client_class.return_value = mock_client
 
-                result = runner.invoke(cli, ["investigate", "Pod is crashing", "--wait"])
+                result = runner.invoke(
+                    cli, ["investigate", "Pod is crashing", "--wait"]
+                )
 
                 assert result.exit_code == 0
                 assert "incident-123" in result.output
@@ -57,14 +61,18 @@ class TestInvestigateCommand:
     async def test_investigate_no_wait(self, runner, mock_config):
         """Test investigation without waiting."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = "incident-123"
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
                 mock_client_class.return_value = mock_client
 
-                result = runner.invoke(cli, ["investigate", "Pod is crashing", "--no-wait"])
+                result = runner.invoke(
+                    cli, ["investigate", "Pod is crashing", "--no-wait"]
+                )
 
                 assert result.exit_code == 0
                 assert "incident-123" in result.output
@@ -78,23 +86,29 @@ class TestInvestigateCommand:
         mock_config.get.return_value = None
 
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.create_incident.return_value = "incident-123"
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
-                    "status": "completed"
+                    "status": "completed",
                 }
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
                 mock_client_class.return_value = mock_client
 
-                result = runner.invoke(cli, [
-                    "investigate",
-                    "Pod is crashing",
-                    "--url", "http://custom:8000",
-                    "--wait"
-                ])
+                result = runner.invoke(
+                    cli,
+                    [
+                        "investigate",
+                        "Pod is crashing",
+                        "--url",
+                        "http://custom:8000",
+                        "--wait",
+                    ],
+                )
 
                 assert result.exit_code == 0
                 # Verify client was created with custom URL
@@ -122,11 +136,13 @@ class TestListCommand:
     async def test_list_success(self, runner, mock_config):
         """Test successful incident listing."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.list_incidents.return_value = [
                     {"id": "incident-1", "status": "completed"},
-                    {"id": "incident-2", "status": "investigating"}
+                    {"id": "incident-2", "status": "investigating"},
                 ]
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
@@ -141,7 +157,9 @@ class TestListCommand:
     async def test_list_with_limit(self, runner, mock_config):
         """Test listing with custom limit."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.list_incidents.return_value = []
                 mock_client.__aenter__.return_value = mock_client
@@ -161,12 +179,14 @@ class TestShowCommand:
     async def test_show_success(self, runner, mock_config):
         """Test successful incident display."""
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            with patch("sre_orchestrator_cli.main.OrchestratorClient") as mock_client_class:
+            with patch(
+                "sre_orchestrator_cli.main.OrchestratorClient"
+            ) as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.get_incident.return_value = {
                     "id": "incident-123",
                     "status": "completed",
-                    "root_cause": "Memory issue"
+                    "root_cause": "Memory issue",
                 }
                 mock_client.__aenter__.return_value = mock_client
                 mock_client.__aexit__.return_value = None
@@ -186,10 +206,14 @@ class TestConfigCommands:
         mock_config = Mock()
 
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):
-            result = runner.invoke(cli, ["config", "set", "orchestrator-url", "http://localhost:8000"])
+            result = runner.invoke(
+                cli, ["config", "set", "orchestrator-url", "http://localhost:8000"]
+            )
 
             assert result.exit_code == 0
-            mock_config.set.assert_called_once_with("orchestrator-url", "http://localhost:8000")
+            mock_config.set.assert_called_once_with(
+                "orchestrator-url", "http://localhost:8000"
+            )
 
     def test_config_get(self, runner):
         """Test getting config value."""
@@ -227,7 +251,7 @@ class TestConfigCommands:
         mock_config = Mock()
         mock_config.get_all.return_value = {
             "orchestrator_url": "http://localhost:8000",
-            "api_key": "secret-key-12345"
+            "api_key": "secret-key-12345",
         }
 
         with patch("sre_orchestrator_cli.main.Config", return_value=mock_config):

@@ -16,7 +16,7 @@ from langchain_core.messages import AIMessage
 
 from app.core.investigation_agent import (
     create_investigation_agent_native,
-    investigate_incident
+    investigate_incident,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,53 +28,53 @@ CONCURRENT_TEST_INCIDENTS = [
     {
         "id": "concurrent-1",
         "description": "Incident concurrent-1: Pod auth-service-xyz is in CrashLoopBackOff state.",
-        "expected_keyword": "crash"
+        "expected_keyword": "crash",
     },
     {
         "id": "concurrent-2",
         "description": "Incident concurrent-2: High memory usage detected on pod payment-processor-abc.",
-        "expected_keyword": "memory"
+        "expected_keyword": "memory",
     },
     {
         "id": "concurrent-3",
         "description": "Incident concurrent-3: Service frontend-web is experiencing 503 errors.",
-        "expected_keyword": "503"
+        "expected_keyword": "503",
     },
     {
         "id": "concurrent-4",
         "description": "Incident concurrent-4: Database connection pool exhausted for pod api-gateway-def.",
-        "expected_keyword": "connection"
+        "expected_keyword": "connection",
     },
     {
         "id": "concurrent-5",
         "description": "Incident concurrent-5: Pod worker-queue-ghi is stuck in Pending state.",
-        "expected_keyword": "pending"
+        "expected_keyword": "pending",
     },
     {
         "id": "concurrent-6",
         "description": "Incident concurrent-6: High CPU usage on pod analytics-service-jkl.",
-        "expected_keyword": "cpu"
+        "expected_keyword": "cpu",
     },
     {
         "id": "concurrent-7",
         "description": "Incident concurrent-7: Pod notification-service-mno failing health checks.",
-        "expected_keyword": "health"
+        "expected_keyword": "health",
     },
     {
         "id": "concurrent-8",
         "description": "Incident concurrent-8: Service cache-redis-pqr experiencing connection timeouts.",
-        "expected_keyword": "timeout"
+        "expected_keyword": "timeout",
     },
     {
         "id": "concurrent-9",
         "description": "Incident concurrent-9: Pod batch-processor-stu running out of disk space.",
-        "expected_keyword": "disk"
+        "expected_keyword": "disk",
     },
     {
         "id": "concurrent-10",
         "description": "Incident concurrent-10: Service message-queue-vwx has high message backlog.",
-        "expected_keyword": "backlog"
-    }
+        "expected_keyword": "backlog",
+    },
 ]
 
 
@@ -93,7 +93,7 @@ def create_mock_tools_for_incident(incident_id: str) -> List[Any]:
         return {
             "incident_id": incident_id,  # Include incident ID to verify no leakage
             "status": "Error",
-            "message": f"Status for {incident_id}"
+            "message": f"Status for {incident_id}",
         }
 
     async def get_pod_logs(pod_name: str) -> str:
@@ -104,13 +104,13 @@ def create_mock_tools_for_incident(incident_id: str) -> List[Any]:
     tool_1 = StructuredTool.from_function(
         coroutine=get_pod_status,
         name="get_pod_status",
-        description="Get the status of a Kubernetes pod"
+        description="Get the status of a Kubernetes pod",
     )
 
     tool_2 = StructuredTool.from_function(
         coroutine=get_pod_logs,
         name="get_pod_logs",
-        description="Get logs from a Kubernetes pod"
+        description="Get logs from a Kubernetes pod",
     )
 
     return [tool_1, tool_2]
@@ -123,7 +123,7 @@ def create_mock_llm_config() -> Dict[str, Any]:
         "api_key": "mock-api-key",
         "model_name": "gpt-4",
         "temperature": 0.7,
-        "max_tokens": 2000
+        "max_tokens": 2000,
     }
 
 
@@ -161,9 +161,13 @@ def mock_llm_concurrent(monkeypatch):
                 if hasattr(msg, "content") and msg.content:
                     content_str = str(msg.content)
                     # Tool results contain incident_id field
-                    match = re.search(r"'incident_id':\s*'(concurrent-\d+)'", content_str)
+                    match = re.search(
+                        r"'incident_id':\s*'(concurrent-\d+)'", content_str
+                    )
                     if not match:
-                        match = re.search(r'"incident_id":\s*"(concurrent-\d+)"', content_str)
+                        match = re.search(
+                            r'"incident_id":\s*"(concurrent-\d+)"', content_str
+                        )
                     if match:
                         correlation_id = match.group(1)
                         break
@@ -183,9 +187,9 @@ def mock_llm_concurrent(monkeypatch):
                     {
                         "name": "get_pod_status",
                         "args": {"pod_name": f"pod-{correlation_id}"},
-                        "id": f"call_{correlation_id}_1"
+                        "id": f"call_{correlation_id}_1",
                     }
-                ]
+                ],
             )
             response.tool_calls = response.tool_calls
             return response
@@ -198,9 +202,9 @@ def mock_llm_concurrent(monkeypatch):
                     {
                         "name": "get_pod_logs",
                         "args": {"pod_name": f"pod-{correlation_id}"},
-                        "id": f"call_{correlation_id}_2"
+                        "id": f"call_{correlation_id}_2",
                     }
-                ]
+                ],
             )
             response.tool_calls = response.tool_calls
             return response
@@ -230,8 +234,7 @@ RECOMMENDATIONS: Fix the issue in {correlation_id}"""
 
 
 async def run_single_investigation(
-    agent: Any,
-    incident: Dict[str, Any]
+    agent: Any, incident: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
     Run a single investigation and return results with timing.
@@ -249,7 +252,7 @@ async def run_single_investigation(
         agent=agent,
         incident_id=incident["id"],
         description=incident["description"],
-        correlation_id=incident["id"]
+        correlation_id=incident["id"],
     )
 
     end_time = datetime.utcnow()
@@ -260,7 +263,7 @@ async def run_single_investigation(
         "result": result,
         "duration": duration,
         "start_time": start_time,
-        "end_time": end_time
+        "end_time": end_time,
     }
 
 
@@ -286,16 +289,13 @@ async def test_concurrent_investigations_no_state_leakage(mock_llm_concurrent):
     agent = await create_investigation_agent_native(
         mcp_tools=mock_tools,
         llm_config=llm_config,
-        correlation_id="concurrent-test-shared"
+        correlation_id="concurrent-test-shared",
     )
 
     logger.info(f"Running {len(test_incidents)} concurrent investigations")
 
     # Run all investigations concurrently
-    tasks = [
-        run_single_investigation(agent, incident)
-        for incident in test_incidents
-    ]
+    tasks = [run_single_investigation(agent, incident) for incident in test_incidents]
 
     results = await asyncio.gather(*tasks)
 
@@ -309,14 +309,14 @@ async def test_concurrent_investigations_no_state_leakage(mock_llm_concurrent):
             extra={
                 "incident_id": incident_id,
                 "status": result["status"],
-                "duration": investigation["duration"]
-            }
+                "duration": investigation["duration"],
+            },
         )
 
         # Verify investigation completed
-        assert result["status"] == "completed", (
-            f"Investigation {incident_id} failed: {result.get('error')}"
-        )
+        assert (
+            result["status"] == "completed"
+        ), f"Investigation {incident_id} failed: {result.get('error')}"
 
         # Verify root cause contains the incident ID (no state leakage)
         root_cause = result.get("root_cause", "").lower()
@@ -359,7 +359,7 @@ async def test_concurrent_investigations_performance(mock_llm_concurrent):
     agent = await create_investigation_agent_native(
         mcp_tools=mock_tools,
         llm_config=llm_config,
-        correlation_id="concurrent-perf-test"
+        correlation_id="concurrent-perf-test",
     )
 
     # Run investigations sequentially
@@ -378,17 +378,16 @@ async def test_concurrent_investigations_performance(mock_llm_concurrent):
     logger.info("Running investigations concurrently")
     concurrent_start = datetime.utcnow()
 
-    tasks = [
-        run_single_investigation(agent, incident)
-        for incident in test_incidents
-    ]
+    tasks = [run_single_investigation(agent, incident) for incident in test_incidents]
     concurrent_results = await asyncio.gather(*tasks)
 
     concurrent_end = datetime.utcnow()
     concurrent_duration = (concurrent_end - concurrent_start).total_seconds()
 
     # Calculate speedup
-    speedup = sequential_duration / concurrent_duration if concurrent_duration > 0 else 0
+    speedup = (
+        sequential_duration / concurrent_duration if concurrent_duration > 0 else 0
+    )
 
     logger.info(
         "Concurrent performance results",
@@ -396,8 +395,8 @@ async def test_concurrent_investigations_performance(mock_llm_concurrent):
             "sequential_duration": sequential_duration,
             "concurrent_duration": concurrent_duration,
             "speedup": speedup,
-            "incident_count": len(test_incidents)
-        }
+            "incident_count": len(test_incidents),
+        },
     )
 
     # Concurrent should be faster (at least 1.5x speedup for 5 concurrent tasks)
@@ -414,16 +413,16 @@ async def test_concurrent_investigations_performance(mock_llm_concurrent):
 
     logger.info(f"✓ Concurrent performance test passed (speedup: {speedup:.2f}x)")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("CONCURRENT PERFORMANCE RESULTS")
-    print("="*80)
+    print("=" * 80)
     print(f"\nIncidents Tested:       {len(test_incidents)}")
     print(f"Sequential Duration:    {sequential_duration:.3f}s")
     print(f"Concurrent Duration:    {concurrent_duration:.3f}s")
     print(f"Speedup:                {speedup:.2f}x")
     print("Expected Speedup:       >= 1.5x")
     print(f"Status:                 {'✓ PASS' if speedup >= 1.5 else '✗ FAIL'}")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
 
 @pytest.mark.asyncio
@@ -448,18 +447,17 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
     agent = await create_investigation_agent_native(
         mcp_tools=mock_tools,
         llm_config=llm_config,
-        correlation_id="concurrent-stress-test"
+        correlation_id="concurrent-stress-test",
     )
 
-    logger.info(f"Running {len(test_incidents)} concurrent investigations (stress test)")
+    logger.info(
+        f"Running {len(test_incidents)} concurrent investigations (stress test)"
+    )
 
     start_time = datetime.utcnow()
 
     # Run all investigations concurrently
-    tasks = [
-        run_single_investigation(agent, incident)
-        for incident in test_incidents
-    ]
+    tasks = [run_single_investigation(agent, incident) for incident in test_incidents]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -476,7 +474,7 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
             exceptions += 1
             logger.error(
                 f"Investigation {test_incidents[i]['id']} raised exception",
-                extra={"error": str(result)}
+                extra={"error": str(result)},
             )
         elif result["result"]["status"] == "completed":
             successes += 1
@@ -484,7 +482,7 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
             failures += 1
             logger.warning(
                 f"Investigation {test_incidents[i]['id']} failed",
-                extra={"error": result["result"].get("error")}
+                extra={"error": result["result"].get("error")},
             )
 
     success_rate = (successes / len(test_incidents)) * 100
@@ -497,8 +495,8 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
             "failures": failures,
             "exceptions": exceptions,
             "success_rate": success_rate,
-            "total_duration": total_duration
-        }
+            "total_duration": total_duration,
+        },
     )
 
     # Assert at least 90% success rate
@@ -515,9 +513,9 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
         f"({successes}/{len(test_incidents)} successful, {success_rate:.1f}%)"
     )
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("HIGH CONCURRENCY STRESS TEST RESULTS")
-    print("="*80)
+    print("=" * 80)
     print(f"\nTotal Investigations:   {len(test_incidents)}")
     print(f"Successful:             {successes}")
     print(f"Failed:                 {failures}")
@@ -526,8 +524,10 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
     print(f"Total Duration:         {total_duration:.3f}s")
     print(f"Avg Duration:           {total_duration/len(test_incidents):.3f}s")
     print("Expected Success Rate:  >= 90%")
-    print(f"Status:                 {'✓ PASS' if success_rate >= 90 and exceptions == 0 else '✗ FAIL'}")
-    print("="*80 + "\n")
+    print(
+        f"Status:                 {'✓ PASS' if success_rate >= 90 and exceptions == 0 else '✗ FAIL'}"
+    )
+    print("=" * 80 + "\n")
 
 
 @pytest.mark.asyncio
@@ -552,14 +552,11 @@ async def test_concurrent_investigations_isolation(mock_llm_concurrent):
     agent = await create_investigation_agent_native(
         mcp_tools=mock_tools,
         llm_config=llm_config,
-        correlation_id="concurrent-isolation-test"
+        correlation_id="concurrent-isolation-test",
     )
 
     # Run investigations concurrently
-    tasks = [
-        run_single_investigation(agent, incident)
-        for incident in test_incidents
-    ]
+    tasks = [run_single_investigation(agent, incident) for incident in test_incidents]
 
     results = await asyncio.gather(*tasks)
 
@@ -576,9 +573,9 @@ async def test_concurrent_investigations_isolation(mock_llm_concurrent):
 
         # Verify root cause is specific to this incident
         root_cause = result.get("root_cause", "")
-        assert incident_id in root_cause, (
-            f"Root cause for {incident_id} doesn't contain incident ID: {root_cause}"
-        )
+        assert (
+            incident_id in root_cause
+        ), f"Root cause for {incident_id} doesn't contain incident ID: {root_cause}"
 
         # Verify tool calls are specific to this incident
         tool_calls = result.get("tool_calls", [])
@@ -586,8 +583,8 @@ async def test_concurrent_investigations_isolation(mock_llm_concurrent):
             tool_args = tool_call.get("args", {})
             # Tool args should reference this incident's pod
             if "pod_name" in tool_args:
-                assert incident_id in tool_args["pod_name"], (
-                    f"Tool call for {incident_id} references wrong pod: {tool_args}"
-                )
+                assert (
+                    incident_id in tool_args["pod_name"]
+                ), f"Tool call for {incident_id} references wrong pod: {tool_args}"
 
     logger.info("✓ Concurrent investigations isolation test passed")

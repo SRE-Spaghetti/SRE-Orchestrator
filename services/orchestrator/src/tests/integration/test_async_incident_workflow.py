@@ -38,17 +38,23 @@ async def test_create_incident_poll_status_get_completed_results():
         incident.confidence_score = "high"
         incident.evidence = {"tool_calls": [], "reasoning": "Test reasoning"}
         from datetime import datetime
+
         incident.completed_at = datetime.utcnow()
 
     with (
-        patch("app.core.incident_repository.IncidentRepository._investigate_incident", new=mock_investigate),
+        patch(
+            "app.core.incident_repository.IncidentRepository._investigate_incident",
+            new=mock_investigate,
+        ),
         patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 1. Create incident
             create_response = await client.post(
                 "/api/v1/incidents",
-                json={"description": "Test incident for async workflow"}
+                json={"description": "Test incident for async workflow"},
             )
 
             assert create_response.status_code == 202
@@ -74,7 +80,9 @@ async def test_create_incident_poll_status_get_completed_results():
                 await asyncio.sleep(0.5)
 
             # 3. Verify final results
-            assert final_incident is not None, "Incident did not complete within timeout"
+            assert (
+                final_incident is not None
+            ), "Incident did not complete within timeout"
             assert final_incident["id"] == incident_id
             assert final_incident["description"] == "Test incident for async workflow"
             assert final_incident["status"] == "completed"
@@ -109,19 +117,25 @@ async def test_background_investigation_continues_after_cli_disconnect():
         incident.suggested_root_cause = "Network timeout"
         incident.confidence_score = "medium"
         from datetime import datetime
+
         incident.completed_at = datetime.utcnow()
 
         investigation_completed = True
 
     with (
-        patch("app.core.incident_repository.IncidentRepository._investigate_incident", new=mock_investigate),
+        patch(
+            "app.core.incident_repository.IncidentRepository._investigate_incident",
+            new=mock_investigate,
+        ),
         patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 1. Create incident (simulates CLI request)
             create_response = await client.post(
                 "/api/v1/incidents",
-                json={"description": "Test incident for disconnect"}
+                json={"description": "Test incident for disconnect"},
             )
 
             assert create_response.status_code == 202
@@ -140,7 +154,9 @@ async def test_background_investigation_continues_after_cli_disconnect():
             incident_data = get_response.json()
             assert incident_data["status"] == "completed"
             assert incident_data["suggested_root_cause"] == "Network timeout"
-            assert investigation_completed, "Investigation should have completed in background"
+            assert (
+                investigation_completed
+            ), "Investigation should have completed in background"
 
 
 @pytest.mark.asyncio
@@ -159,14 +175,18 @@ async def test_timeout_handling_in_cli():
         await asyncio.sleep(100)  # Very long sleep
 
     with (
-        patch("app.core.incident_repository.IncidentRepository._investigate_incident", new=mock_investigate_slow),
+        patch(
+            "app.core.incident_repository.IncidentRepository._investigate_incident",
+            new=mock_investigate_slow,
+        ),
         patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 1. Create incident
             create_response = await client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident for timeout"}
+                "/api/v1/incidents", json={"description": "Test incident for timeout"}
             )
 
             assert create_response.status_code == 202
@@ -215,21 +235,25 @@ async def test_failed_investigation_preserves_partial_results():
         # Simulate partial investigation
         incident.evidence = {
             "tool_calls": [{"tool": "test_tool", "result": "partial data"}],
-            "partial_reasoning": "Started analysis..."
+            "partial_reasoning": "Started analysis...",
         }
 
         # Then fail
         raise Exception("Investigation failed due to timeout")
 
     with (
-        patch("app.core.incident_repository.IncidentRepository._investigate_incident", new=mock_investigate_fail),
+        patch(
+            "app.core.incident_repository.IncidentRepository._investigate_incident",
+            new=mock_investigate_fail,
+        ),
         patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 1. Create incident
             create_response = await client.post(
-                "/api/v1/incidents",
-                json={"description": "Test incident for failure"}
+                "/api/v1/incidents", json={"description": "Test incident for failure"}
             )
 
             assert create_response.status_code == 202
@@ -244,7 +268,9 @@ async def test_failed_investigation_preserves_partial_results():
 
             incident_data = get_response.json()
             assert incident_data["status"] == "failed"
-            assert incident_data["error_message"] == "Investigation failed due to timeout"
+            assert (
+                incident_data["error_message"] == "Investigation failed due to timeout"
+            )
             assert incident_data["completed_at"] is not None
 
             # Verify partial results were preserved
@@ -268,19 +294,24 @@ async def test_multiple_concurrent_investigations():
         incident.status = "completed"
         incident.suggested_root_cause = f"Root cause for {incident.description}"
         from datetime import datetime
+
         incident.completed_at = datetime.utcnow()
 
     with (
-        patch("app.core.incident_repository.IncidentRepository._investigate_incident", new=mock_investigate),
+        patch(
+            "app.core.incident_repository.IncidentRepository._investigate_incident",
+            new=mock_investigate,
+        ),
         patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
     ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # 1. Create multiple incidents
             incident_ids = []
             for i in range(3):
                 create_response = await client.post(
-                    "/api/v1/incidents",
-                    json={"description": f"Test incident {i+1}"}
+                    "/api/v1/incidents", json={"description": f"Test incident {i+1}"}
                 )
                 assert create_response.status_code == 202
                 incident_ids.append(create_response.json()["incident_id"])

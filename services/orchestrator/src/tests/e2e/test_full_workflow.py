@@ -25,22 +25,26 @@ def mock_mcp_tools():
     pod_details_tool = Mock()
     pod_details_tool.name = "get_pod_details"
     pod_details_tool.description = "Get Kubernetes pod details"
-    pod_details_tool.ainvoke = AsyncMock(return_value={
-        "status": "CrashLoopBackOff",
-        "restarts": 5,
-        "reason": "Error",
-        "message": "Back-off restarting failed container"
-    })
+    pod_details_tool.ainvoke = AsyncMock(
+        return_value={
+            "status": "CrashLoopBackOff",
+            "restarts": 5,
+            "reason": "Error",
+            "message": "Back-off restarting failed container",
+        }
+    )
 
     # Mock get_pod_logs tool
     pod_logs_tool = Mock()
     pod_logs_tool.name = "get_pod_logs"
     pod_logs_tool.description = "Get Kubernetes pod logs"
-    pod_logs_tool.ainvoke = AsyncMock(return_value="""
+    pod_logs_tool.ainvoke = AsyncMock(
+        return_value="""
 2024-01-15 10:30:45 ERROR: Failed to connect to database
 2024-01-15 10:30:46 ERROR: Connection timeout after 30s
 2024-01-15 10:30:47 FATAL: Application startup failed
-""")
+"""
+    )
 
     return [pod_details_tool, pod_logs_tool]
 
@@ -52,7 +56,10 @@ def mock_llm_response():
     msg1.type = "ai"
     msg1.content = "I will investigate this pod crash issue."
     msg1.tool_calls = [
-        {"name": "get_pod_details", "args": {"pod_name": "test-pod", "namespace": "default"}}
+        {
+            "name": "get_pod_details",
+            "args": {"pod_name": "test-pod", "namespace": "default"},
+        }
     ]
 
     msg2 = Mock()
@@ -64,7 +71,10 @@ def mock_llm_response():
     msg3.type = "ai"
     msg3.content = "Let me check the logs."
     msg3.tool_calls = [
-        {"name": "get_pod_logs", "args": {"pod_name": "test-pod", "namespace": "default"}}
+        {
+            "name": "get_pod_logs",
+            "args": {"pod_name": "test-pod", "namespace": "default"},
+        }
     ]
 
     msg4 = Mock()
@@ -93,10 +103,7 @@ class TestEndToEndWorkflow:
 
     @pytest.mark.asyncio
     async def test_complete_incident_investigation_workflow(
-        self,
-        test_client,
-        mock_mcp_tools,
-        mock_llm_response
+        self, test_client, mock_mcp_tools, mock_llm_response
     ):
         """Test complete workflow from incident creation to investigation completion."""
         # Mock MCP tool manager
@@ -109,7 +116,9 @@ class TestEndToEndWorkflow:
             # Mock LangChain LLM client
             with patch("app.services.langchain_llm_client.ChatOpenAI"):
                 # Mock agent creation and execution
-                with patch("app.core.investigation_agent.create_react_agent") as mock_create_agent:
+                with patch(
+                    "app.core.investigation_agent.create_react_agent"
+                ) as mock_create_agent:
                     mock_agent = AsyncMock()
                     mock_agent.ainvoke.return_value = mock_llm_response
                     mock_create_agent.return_value = mock_agent
@@ -117,7 +126,9 @@ class TestEndToEndWorkflow:
                     # Create incident
                     response = test_client.post(
                         "/api/v1/incidents",
-                        json={"description": "Pod test-pod in namespace default is crashing"}
+                        json={
+                            "description": "Pod test-pod in namespace default is crashing"
+                        },
                     )
 
                     assert response.status_code == 202
@@ -127,7 +138,9 @@ class TestEndToEndWorkflow:
                     # Wait for investigation to complete
                     max_attempts = 30
                     for _ in range(max_attempts):
-                        get_response = test_client.get(f"/api/v1/incidents/{incident_id}")
+                        get_response = test_client.get(
+                            f"/api/v1/incidents/{incident_id}"
+                        )
 
                         if get_response.status_code == 200:
                             incident = get_response.json()
@@ -139,19 +152,21 @@ class TestEndToEndWorkflow:
                     # Verify final incident state
                     assert incident["status"] == "completed"
                     assert incident["root_cause"] is not None
-                    assert "database connection failure" in incident["root_cause"].lower()
+                    assert (
+                        "database connection failure" in incident["root_cause"].lower()
+                    )
                     assert incident["confidence"] == "high"
                     assert len(incident["evidence"]) > 0
 
     @pytest.mark.asyncio
     async def test_incident_investigation_with_tool_failure(
-        self,
-        test_client,
-        mock_mcp_tools
+        self, test_client, mock_mcp_tools
     ):
         """Test workflow handles MCP tool failures gracefully."""
         # Make one tool fail
-        mock_mcp_tools[0].ainvoke = AsyncMock(side_effect=Exception("Tool execution failed"))
+        mock_mcp_tools[0].ainvoke = AsyncMock(
+            side_effect=Exception("Tool execution failed")
+        )
 
         with patch("app.main.MCPToolManager") as mock_tool_manager_class:
             mock_tool_manager = AsyncMock()
@@ -160,7 +175,9 @@ class TestEndToEndWorkflow:
             mock_tool_manager_class.return_value = mock_tool_manager
 
             with patch("app.services.langchain_llm_client.ChatOpenAI"):
-                with patch("app.core.investigation_agent.create_react_agent") as mock_create_agent:
+                with patch(
+                    "app.core.investigation_agent.create_react_agent"
+                ) as mock_create_agent:
                     # Agent should handle tool failure and continue
                     mock_agent = AsyncMock()
                     msg = Mock()
@@ -175,8 +192,7 @@ RECOMMENDATIONS: Check MCP server connectivity"""
                     mock_create_agent.return_value = mock_agent
 
                     response = test_client.post(
-                        "/api/v1/incidents",
-                        json={"description": "Pod is crashing"}
+                        "/api/v1/incidents", json={"description": "Pod is crashing"}
                     )
 
                     assert response.status_code == 202
@@ -185,7 +201,9 @@ RECOMMENDATIONS: Check MCP server connectivity"""
                     # Wait for completion
                     max_attempts = 30
                     for _ in range(max_attempts):
-                        get_response = test_client.get(f"/api/v1/incidents/{incident_id}")
+                        get_response = test_client.get(
+                            f"/api/v1/incidents/{incident_id}"
+                        )
                         if get_response.status_code == 200:
                             incident = get_response.json()
                             if incident["status"] in ["completed", "failed"]:
@@ -207,7 +225,7 @@ RECOMMENDATIONS: Check MCP server connectivity"""
                 "get_pod_logs",
                 "get_pod_events",
                 "list_pods",
-                "describe_pod"
+                "describe_pod",
             ]
             mock_tool_manager_class.return_value = mock_tool_manager
 
@@ -228,8 +246,7 @@ RECOMMENDATIONS: Check MCP server connectivity"""
         # Create a few incidents first
         for i in range(3):
             test_client.post(
-                "/api/v1/incidents",
-                json={"description": f"Test incident {i}"}
+                "/api/v1/incidents", json={"description": f"Test incident {i}"}
             )
 
         # List incidents
@@ -248,8 +265,7 @@ RECOMMENDATIONS: Check MCP server connectivity"""
     def test_create_incident_invalid_payload(self, test_client):
         """Test creating incident with invalid payload."""
         response = test_client.post(
-            "/api/v1/incidents",
-            json={"invalid_field": "value"}
+            "/api/v1/incidents", json={"invalid_field": "value"}
         )
 
         assert response.status_code == 422  # Validation error
@@ -283,7 +299,7 @@ class TestCLIIntegration:
                 "id": "test-incident-123",
                 "status": "completed",
                 "root_cause": "Test root cause",
-                "confidence": "high"
+                "confidence": "high",
             }
             mock_http_client.get.return_value = get_response
 

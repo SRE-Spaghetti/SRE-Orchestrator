@@ -19,7 +19,7 @@ def llm_config():
         "api_key": "test-key-123",
         "model_name": "gpt-4",
         "temperature": 0.7,
-        "max_tokens": 2000
+        "max_tokens": 2000,
     }
 
 
@@ -35,8 +35,11 @@ class TestNativeImplementation:
     @pytest.mark.asyncio
     async def test_native_agent_creation_succeeds(self, llm_config, mock_tools):
         """Test that native agent can be created successfully."""
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.ToolNode") as mock_tool_node_class:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.ToolNode"
+        ) as mock_tool_node_class:
 
             mock_llm = AsyncMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -48,14 +51,11 @@ class TestNativeImplementation:
 
             # Create native agent - should not raise
             agent = await create_investigation_agent_native(
-                mcp_tools=mock_tools,
-                llm_config=llm_config
+                mcp_tools=mock_tools, llm_config=llm_config
             )
 
             # Verify agent was created
             assert agent is not None
-
-
 
     @pytest.mark.asyncio
     async def test_native_agent_accepts_config(self, mock_tools):
@@ -65,11 +65,14 @@ class TestNativeImplementation:
             "api_key": "test-key",
             "model_name": "gpt-4",
             "temperature": 0.5,
-            "max_tokens": 1000
+            "max_tokens": 1000,
         }
 
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.ToolNode") as mock_tool_node_class:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.ToolNode"
+        ) as mock_tool_node_class:
 
             mock_llm = AsyncMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -80,8 +83,7 @@ class TestNativeImplementation:
 
             # Should accept the config
             native_agent = await create_investigation_agent_native(
-                mcp_tools=mock_tools,
-                llm_config=config
+                mcp_tools=mock_tools, llm_config=config
             )
 
             # Should be created successfully
@@ -104,8 +106,7 @@ class TestNativeImplementation:
 
         with pytest.raises(ValueError, match="base_url"):
             await create_investigation_agent_native(
-                mcp_tools=mock_tools,
-                llm_config=config_no_base_url
+                mcp_tools=mock_tools, llm_config=config_no_base_url
             )
 
         # Missing api_key
@@ -113,23 +114,23 @@ class TestNativeImplementation:
 
         with pytest.raises(ValueError, match="api_key"):
             await create_investigation_agent_native(
-                mcp_tools=mock_tools,
-                llm_config=config_no_api_key
+                mcp_tools=mock_tools, llm_config=config_no_api_key
             )
-
-
 
     @pytest.mark.asyncio
     async def test_native_agent_uses_default_values(self, mock_tools):
         """Test that native agent uses default values for optional config."""
         config = {
             "base_url": "https://api.example.com/v1",
-            "api_key": "test-key"
+            "api_key": "test-key",
             # No model_name, temperature, or max_tokens
         }
 
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.ToolNode") as mock_tool_node_class:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.ToolNode"
+        ) as mock_tool_node_class:
 
             mock_llm = AsyncMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -139,8 +140,7 @@ class TestNativeImplementation:
             mock_tool_node_class.return_value = mock_tool_node
 
             await create_investigation_agent_native(
-                mcp_tools=mock_tools,
-                llm_config=config
+                mcp_tools=mock_tools, llm_config=config
             )
 
             # Verify defaults were used
@@ -150,13 +150,14 @@ class TestNativeImplementation:
             assert call_kwargs["temperature"] == 0.7  # default
             assert call_kwargs["max_tokens"] == 2000  # default
 
-
-
     @pytest.mark.asyncio
     async def test_native_agent_accepts_correlation_id(self, llm_config, mock_tools):
         """Test that native agent accepts correlation_id parameter."""
-        with patch("app.core.investigation_agent.ChatOpenAI") as mock_chat_openai, \
-             patch("app.core.investigation_agent.ToolNode") as mock_tool_node_class:
+        with patch(
+            "app.core.investigation_agent.ChatOpenAI"
+        ) as mock_chat_openai, patch(
+            "app.core.investigation_agent.ToolNode"
+        ) as mock_tool_node_class:
 
             mock_llm = AsyncMock()
             mock_llm.bind_tools.return_value = mock_llm
@@ -169,9 +170,7 @@ class TestNativeImplementation:
             agent = await create_investigation_agent_native(
                 mcp_tools=mock_tools,
                 llm_config=llm_config,
-                correlation_id="test-corr-123"
+                correlation_id="test-corr-123",
             )
 
             assert agent is not None
-
-

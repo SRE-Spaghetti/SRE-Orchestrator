@@ -14,6 +14,7 @@ from pathlib import Path
 load_dotenv()
 app = FastAPI()
 
+
 # Define a filter to exclude /health endpoint from logs
 class HealthCheckFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
@@ -118,7 +119,7 @@ async def read_health():
     health_status = {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
-        "components": {}
+        "components": {},
     }
 
     # Track if any component is unhealthy
@@ -132,18 +133,18 @@ async def read_health():
                 "model": app.state.langchain_llm_client.config.model_name,
                 "base_url": app.state.langchain_llm_client.config.base_url,
                 "temperature": app.state.langchain_llm_client.config.temperature,
-                "max_tokens": app.state.langchain_llm_client.config.max_tokens
+                "max_tokens": app.state.langchain_llm_client.config.max_tokens,
             }
         except Exception as e:
             health_status["components"]["langchain_llm"] = {
                 "status": "unhealthy",
-                "error": str(e)
+                "error": str(e),
             }
             all_healthy = False
     else:
         health_status["components"]["langchain_llm"] = {
             "status": "not_initialized",
-            "message": "LangChain LLM client not initialized"
+            "message": "LangChain LLM client not initialized",
         }
         all_healthy = False
 
@@ -158,7 +159,11 @@ async def read_health():
                     "status": "healthy" if tool_count > 0 else "degraded",
                     "tool_count": tool_count,
                     "tools": tool_names,
-                    "message": f"{tool_count} tool(s) available" if tool_count > 0 else "No tools available"
+                    "message": (
+                        f"{tool_count} tool(s) available"
+                        if tool_count > 0
+                        else "No tools available"
+                    ),
                 }
 
                 if tool_count == 0:
@@ -166,50 +171,56 @@ async def read_health():
             else:
                 health_status["components"]["mcp_tools"] = {
                     "status": "not_initialized",
-                    "message": "MCP Tool Manager not initialized"
+                    "message": "MCP Tool Manager not initialized",
                 }
                 all_healthy = False
         except Exception as e:
             health_status["components"]["mcp_tools"] = {
                 "status": "unhealthy",
-                "error": str(e)
+                "error": str(e),
             }
             all_healthy = False
     else:
         health_status["components"]["mcp_tools"] = {
             "status": "not_initialized",
-            "message": "MCP Tool Manager not available"
+            "message": "MCP Tool Manager not available",
         }
         all_healthy = False
 
     # Check agent initialization status
     # Agent is created on-demand, so we check if prerequisites are available
     agent_prerequisites_met = (
-        hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client and
-        hasattr(app.state, "mcp_tool_manager") and app.state.mcp_tool_manager and
-        app.state.mcp_tool_manager.is_initialized()
+        hasattr(app.state, "langchain_llm_client")
+        and app.state.langchain_llm_client
+        and hasattr(app.state, "mcp_tool_manager")
+        and app.state.mcp_tool_manager
+        and app.state.mcp_tool_manager.is_initialized()
     )
 
     if agent_prerequisites_met:
         health_status["components"]["investigation_agent"] = {
             "status": "ready",
             "message": "Agent can be created on-demand",
-            "prerequisites": {
-                "llm_client": "available",
-                "mcp_tools": "available"
-            }
+            "prerequisites": {"llm_client": "available", "mcp_tools": "available"},
         }
     else:
         missing_prerequisites = []
-        if not (hasattr(app.state, "langchain_llm_client") and app.state.langchain_llm_client):
+        if not (
+            hasattr(app.state, "langchain_llm_client")
+            and app.state.langchain_llm_client
+        ):
             missing_prerequisites.append("llm_client")
-        if not (hasattr(app.state, "mcp_tool_manager") and app.state.mcp_tool_manager and app.state.mcp_tool_manager.is_initialized()):
+        if not (
+            hasattr(app.state, "mcp_tool_manager")
+            and app.state.mcp_tool_manager
+            and app.state.mcp_tool_manager.is_initialized()
+        ):
             missing_prerequisites.append("mcp_tools")
 
         health_status["components"]["investigation_agent"] = {
             "status": "not_ready",
             "message": "Agent prerequisites not met",
-            "missing_prerequisites": missing_prerequisites
+            "missing_prerequisites": missing_prerequisites,
         }
         all_healthy = False
 
@@ -219,22 +230,24 @@ async def read_health():
         and app.state.mcp_connection_manager
     ):
         try:
-            mcp_statuses = await app.state.mcp_connection_manager.get_connection_statuses()
+            mcp_statuses = (
+                await app.state.mcp_connection_manager.get_connection_statuses()
+            )
             health_status["components"]["mcp_connections_legacy"] = {
                 "status": "healthy",
                 "connections": mcp_statuses,
-                "message": "Legacy MCP connections (deprecated)"
+                "message": "Legacy MCP connections (deprecated)",
             }
         except Exception as e:
             health_status["components"]["mcp_connections_legacy"] = {
                 "status": "unhealthy",
                 "error": str(e),
-                "message": "Legacy MCP connections (deprecated)"
+                "message": "Legacy MCP connections (deprecated)",
             }
     else:
         health_status["components"]["mcp_connections_legacy"] = {
             "status": "not_initialized",
-            "message": "Legacy MCP connections not available (deprecated)"
+            "message": "Legacy MCP connections not available (deprecated)",
         }
 
     # Set overall status based on component health
