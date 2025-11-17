@@ -1,7 +1,5 @@
 """Tests for application configuration."""
-import os
 from pathlib import Path
-import pytest
 from app.config import get_mcp_config_path
 
 

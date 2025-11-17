@@ -1,7 +1,6 @@
 """Application configuration management."""
 import os
 from pathlib import Path
-from typing import Optional
 
 
 def get_mcp_config_path() -> Path:

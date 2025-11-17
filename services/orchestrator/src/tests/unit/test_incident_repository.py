@@ -6,7 +6,6 @@ from uuid import UUID
 from datetime import datetime
 
 from app.core.incident_repository import IncidentRepository
-from app.models.incidents import Incident
 
 
 @pytest.fixture

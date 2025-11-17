@@ -150,7 +150,6 @@ class LangChainLLMClient:
         """
         import time
 
-        last_exception = None
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -181,7 +180,6 @@ If a field cannot be determined, use null for optional fields."""
                 return result
 
             except RETRYABLE_LLM_EXCEPTIONS as e:
-                last_exception = e
                 if attempt < max_retries:
                     delay = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(
@@ -224,7 +222,6 @@ If a field cannot be determined, use null for optional fields."""
         """
         import time
 
-        last_exception = None
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -267,7 +264,6 @@ Provide a thorough analysis based on the available evidence."""
                 return result
 
             except RETRYABLE_LLM_EXCEPTIONS as e:
-                last_exception = e
                 if attempt < max_retries:
                     delay = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
                     logger.warning(

@@ -5,7 +5,6 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from app.models.pod_details import PodDetails, ContainerStatus, ResourceRequirements
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from pathlib import Path
-import pytest
 
 client = TestClient(app)
 
@@ -165,7 +164,7 @@ class TestAsyncIncidentWorkflow:
 
         with (
             patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock) as mock_investigate,
+            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation
@@ -199,7 +198,7 @@ class TestAsyncIncidentWorkflow:
 
         with (
             patch("app.core.incident_repository.IncidentRepository.create_incident_sync") as mock_create,
-            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock) as mock_investigate,
+            patch("app.core.incident_repository.IncidentRepository.investigate_incident_async", new_callable=AsyncMock),
             patch.dict("os.environ", {"LLM_API_KEY": "test-key"}),
         ):
             # Mock incident creation

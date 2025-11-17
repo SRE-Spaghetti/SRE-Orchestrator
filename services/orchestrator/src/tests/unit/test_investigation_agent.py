@@ -13,7 +13,6 @@ from unittest.mock import MagicMock
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.core.investigation_agent import (
-    InvestigationState,
     should_continue,
     extract_root_cause,
     extract_confidence,
@@ -540,7 +539,7 @@ class TestAgentNode:
     @pytest.mark.asyncio
     async def test_agent_node_retry_logic(self):
         """Test agent node retry logic on transient failures."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import AsyncMock
         from app.core.investigation_agent import create_agent_node
 
         # Create mock LLM that fails once then succeeds
@@ -756,7 +755,7 @@ class TestNativeGraphConstruction:
             mock_create_agent_node.return_value = mock_agent_node
             mock_create_tool_node.return_value = mock_tool_node
 
-            agent = await create_investigation_agent_native(
+            await create_investigation_agent_native(
                 mcp_tools=[],
                 llm_config=llm_config
             )

@@ -1,7 +1,7 @@
 """Unit tests for LangChain LLM client."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import os
 
 from app.services.langchain_llm_client import (

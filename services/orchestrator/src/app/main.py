@@ -5,7 +5,7 @@ from app.api.v1 import incidents
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.services.mcp_config_service import MCPConfigService
 from app.services.mcp_connection_manager import MCPConnectionManager
-from app.services.langchain_llm_client import get_langchain_llm_client, LangChainLLMClient
+from app.services.langchain_llm_client import get_langchain_llm_client
 from app.services.mcp_tool_manager import MCPToolManager
 from app.services.mcp_tool_config_loader import MCPToolConfigLoader
 from app.config import get_mcp_config_path

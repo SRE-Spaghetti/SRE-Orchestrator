@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
-from datetime import datetime
 
 from app.services.mcp_tool_manager import MCPToolManager
 

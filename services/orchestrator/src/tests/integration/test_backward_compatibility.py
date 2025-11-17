@@ -6,7 +6,7 @@ with proper configuration and validation.
 """
 
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 from app.core.investigation_agent import create_investigation_agent_native
 
@@ -138,7 +138,7 @@ class TestNativeImplementation:
             mock_tool_node = AsyncMock()
             mock_tool_node_class.return_value = mock_tool_node
 
-            agent = await create_investigation_agent_native(
+            await create_investigation_agent_native(
                 mcp_tools=mock_tools,
                 llm_config=config
             )

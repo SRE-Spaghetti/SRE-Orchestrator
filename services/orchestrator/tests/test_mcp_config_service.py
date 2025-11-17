@@ -1,7 +1,6 @@
 """Tests for MCP configuration service."""
 import pytest
 import yaml
-from pathlib import Path
 from app.services.mcp_config_service import MCPConfigService
 
 

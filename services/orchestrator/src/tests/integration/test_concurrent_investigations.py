@@ -421,7 +421,7 @@ async def test_concurrent_investigations_performance(mock_llm_concurrent):
     print(f"Sequential Duration:    {sequential_duration:.3f}s")
     print(f"Concurrent Duration:    {concurrent_duration:.3f}s")
     print(f"Speedup:                {speedup:.2f}x")
-    print(f"Expected Speedup:       >= 1.5x")
+    print("Expected Speedup:       >= 1.5x")
     print(f"Status:                 {'✓ PASS' if speedup >= 1.5 else '✗ FAIL'}")
     print("="*80 + "\n")
 
@@ -525,7 +525,7 @@ async def test_high_concurrency_stress(mock_llm_concurrent):
     print(f"Success Rate:           {success_rate:.1f}%")
     print(f"Total Duration:         {total_duration:.3f}s")
     print(f"Avg Duration:           {total_duration/len(test_incidents):.3f}s")
-    print(f"Expected Success Rate:  >= 90%")
+    print("Expected Success Rate:  >= 90%")
     print(f"Status:                 {'✓ PASS' if success_rate >= 90 and exceptions == 0 else '✗ FAIL'}")
     print("="*80 + "\n")
 
