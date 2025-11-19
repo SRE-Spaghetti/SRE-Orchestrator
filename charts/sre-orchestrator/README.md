@@ -24,6 +24,23 @@ To install the chart, use the following command:
 helm install sre-orchestrator . --namespace sre-orchestrator --create-namespace
 ```
 
+## Configuration
+
+### LLM Configuration
+
+The chart supports configuring the LLM provider:
+
+```yaml
+llm:
+  baseUrl: "https://api.openai.com/v1"
+  modelName: "gpt-4"
+  apiKey: "your-api-key"
+```
+
+### MCP Server Configuration
+
+Configure MCP servers in the `mcp.servers` section of `values.yaml`.
+
 ## Uninstallation
 
 To uninstall the chart, use the following command:

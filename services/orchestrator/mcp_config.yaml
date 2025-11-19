@@ -1,0 +1,70 @@
+# MCP Server Configuration
+# This file configures the MCP servers that the orchestrator will connect to.
+# The format is compatible with MultiServerMCPClient from langchain-mcp-adapters.
+#
+# Configuration Format:
+# Each server is defined with a unique name as the key, and configuration as the value.
+#
+# Supported transport types:
+# 1. streamable_http: For HTTP-based MCP servers
+#    Required fields:
+#      - url: Server URL
+#      - transport: "streamable_http"
+#    Optional fields:
+#      - headers: Dictionary of HTTP headers (e.g., for authentication)
+#
+# 2. stdio: For local MCP servers running as processes
+#    Required fields:
+#      - command: Command to execute (e.g., "npx", "python", "node")
+#      - args: List of command arguments
+#      - transport: "stdio"
+#    Optional fields:
+#      - env: Dictionary of environment variables
+
+# ============================================================================
+# EXAMPLES
+# ============================================================================
+
+# Example 1: Kubernetes MCP Server (HTTP transport)
+# Uncomment and configure when you have a Kubernetes MCP server running
+# kubernetes:
+#   url: "http://kubernetes-mcp-server:8080/mcp"
+#   transport: "streamable_http"
+#   headers:
+#     Authorization: "Bearer YOUR_TOKEN_HERE"
+
+# Example 2: Local Python MCP Server (stdio transport)
+# Uncomment and configure to run a local MCP server
+# python-tools:
+#   command: "python"
+#   args:
+#     - "/path/to/your/mcp_server.py"
+#   transport: "stdio"
+#   env:
+#     LOG_LEVEL: "INFO"
+#     PYTHONPATH: "/path/to/modules"
+
+# Example 3: Prometheus MCP Server (HTTP transport)
+# prometheus:
+#   url: "http://prometheus-mcp-server:9090/mcp"
+#   transport: "streamable_http"
+
+# Example 4: Node.js MCP Server (stdio transport)
+# node-tools:
+#   command: "node"
+#   args:
+#     - "/path/to/server.js"
+#   transport: "stdio"
+
+# ============================================================================
+# ACTIVE CONFIGURATION
+# ============================================================================
+
+# Default configuration: Kubernetes MCP Server via npx
+local-tools:
+  command: "npx"
+  args:
+    - "mcp-server-kubernetes"
+  transport: "stdio"
+
+# Add your MCP server configurations below:

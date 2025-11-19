@@ -14,21 +14,69 @@ uvicorn = "^0.37.0"
 pytest = "^8.4.2"
 ruff = "^0.13.1"
 black = "^25.9.0"
-google-generativeai = "^0.8.5"
 pyyaml = "^6.0.1"
 httpx = "^0.28.1"
 mcp = "^1.18.0"
 pytest-asyncio = "^0.23.7"
+langchain = "^1.0.0"
+langgraph = "^1.0.0"
+langchain-mcp-adapters = "^0.1.0"
+langchain-openai = "^1.0.0"
+pydantic-core = "^2.41.5"
+python-dotenv = "^1.2.1"
+
+[tool.poetry.scripts]
+dev = "uvicorn app.main:app --reload --app-dir src"
+start = "uvicorn app.main:app --app-dir src"
 
 [tool.pytest.ini_options]
 pythonpath = [
     "src"
 ]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: mark test as unit test",
+    "integration: mark test as integration test",
+    "asyncio: mark test as async",
+]
 
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "*/.venv/*",
+]
 
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+skip_empty = true
+fail_under = 60.0
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.0.0"
+pytest-mock = "^3.15.1"
 
 [build-system]
 requires = ["poetry-core"]

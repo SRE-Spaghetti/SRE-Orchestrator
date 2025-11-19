@@ -1,22 +1,26 @@
 # Makefile for SRE-Orchestrator
 
-SERVICES := services/orchestrator services/k8s-agent
+# Note: k8s-agent service removed in refactoring - now using MCP servers
+SERVICES := services/orchestrator
+CLI := cli
 
-.PHONY: help docker-build lint test run install format lock security kind-load
+.PHONY: help docker-build lint test run install format lock security kind-load cli-install cli-test
 .SHELLFLAGS := -ec
 
 help:
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install                Install dependencies for all services"
-	@echo "  lint                   Lint all services"
-	@echo "  test                   Test all services"
-	@echo "  docker-build           Build all services"
-	@echo "  format                 Format all services"
-	@echo "  lock                   Generate poetry.lock for all services"
+	@echo "  install                Install dependencies for orchestrator service"
+	@echo "  lint                   Lint orchestrator service"
+	@echo "  test                   Test orchestrator service"
+	@echo "  docker-build           Build orchestrator Docker image"
+	@echo "  format                 Format orchestrator service"
+	@echo "  lock                   Generate poetry.lock for orchestrator"
 	@echo "  security               Run trivy filesystem scan"
-	@echo "  kind-load              Load docker images into kind for all services"
+	@echo "  kind-load              Load docker images into kind"
+	@echo "  cli-install            Install CLI dependencies"
+	@echo "  cli-test               Test CLI"
 	@echo ""
 	@echo "To run a command on a specific service:"
 	@echo "  make -C <service_directory> <target>"
@@ -29,9 +33,14 @@ install lint test docker-build format lock security kind-load:
 		$(MAKE) -C $$service $@; \
 	done
 
-run:
-	@echo "Running multiple services from the root Makefile is not supported."
-	@echo "Please run each service in a separate terminal:"
-	@echo "  make -C services/orchestrator run"
-	@echo "  make -C services/k8s-agent run"
+cli-install:
+	@echo "Installing CLI dependencies..."
+	@$(MAKE) -C $(CLI) install
 
+cli-test:
+	@echo "Testing CLI..."
+	@$(MAKE) -C $(CLI) test
+
+run:
+	@echo "Starting orchestrator service..."
+	@echo "Run: make -C services/orchestrator run"
