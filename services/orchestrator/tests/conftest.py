@@ -1,7 +1,7 @@
 """Pytest configuration and shared fixtures for orchestrator tests."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from typing import Dict, Any, List
 from unittest.mock import Mock, AsyncMock
@@ -38,7 +38,7 @@ def sample_incident() -> Incident:
         id=uuid4(),
         description="Pod nginx-deployment-abc123 is in CrashLoopBackOff",
         status=IncidentStatus.PENDING,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         evidence={},
         extracted_entities={},
         investigation_steps=[],
@@ -81,7 +81,7 @@ def sample_investigation_step() -> InvestigationStep:
     """
     return InvestigationStep(
         step_name="get_pod_details",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         status="completed",
         details={
             "tool": "get_pod_details",

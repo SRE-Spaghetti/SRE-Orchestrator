@@ -59,7 +59,7 @@ class MCPToolManager:
         Raises:
             Exception: If initialization fails or no servers are configured.
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         if self._initialized:
             logger.info("MCP Tool Manager already initialized")
@@ -71,7 +71,7 @@ class MCPToolManager:
             self._initialized = True
             return self._tools
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             logger.info(
@@ -90,7 +90,7 @@ class MCPToolManager:
             logger.info("Discovering MCP tools from configured servers")
             self._tools = await self._client.get_tools()
 
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_seconds = (end_time - start_time).total_seconds()
 
             # Log tool discovery results
@@ -124,7 +124,7 @@ class MCPToolManager:
             return self._tools
 
         except Exception as e:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_seconds = (end_time - start_time).total_seconds()
 
             logger.error(
@@ -163,10 +163,10 @@ class MCPToolManager:
         This method should be called during application shutdown to properly
         close all MCP server connections.
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         if self._client:
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             try:
                 logger.info(
                     "Cleaning up MCP Tool Manager connections",
@@ -179,7 +179,7 @@ class MCPToolManager:
                 # but we can explicitly close if needed
                 await self._client.__aexit__(None, None, None)
 
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 duration_seconds = (end_time - start_time).total_seconds()
 
                 logger.info(
@@ -190,7 +190,7 @@ class MCPToolManager:
                     },
                 )
             except Exception as e:
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 duration_seconds = (end_time - start_time).total_seconds()
 
                 logger.error(
@@ -259,7 +259,7 @@ class MCPToolManager:
             ValueError: If tool is not found
             Exception: If tool execution fails
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # Find the tool
         tool = None
@@ -279,7 +279,7 @@ class MCPToolManager:
             )
             raise ValueError(f"Tool '{tool_name}' not found")
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             logger.info(
@@ -295,7 +295,7 @@ class MCPToolManager:
             # Execute the tool
             result = await tool.ainvoke(tool_args)
 
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_seconds = (end_time - start_time).total_seconds()
 
             logger.info(
@@ -312,7 +312,7 @@ class MCPToolManager:
             return result
 
         except Exception as e:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_seconds = (end_time - start_time).total_seconds()
 
             logger.error(

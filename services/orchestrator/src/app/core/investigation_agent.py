@@ -64,7 +64,7 @@ import logging
 import re
 import uuid
 from typing import Any, Dict, List, Optional, Literal, TypedDict, Annotated, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import (
@@ -432,12 +432,12 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
             )
 
         # Execute tools using the base ToolNode
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             result = await base_tool_node.ainvoke(state)
 
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_ms = (end_time - start_time).total_seconds() * 1000
 
             # Log tool execution completion
@@ -478,7 +478,7 @@ def create_tool_node_with_logging(mcp_tools: List[Any]) -> callable:
             return result
 
         except Exception as e:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             duration_ms = (end_time - start_time).total_seconds() * 1000
 
             logger.error(
@@ -789,7 +789,7 @@ async def investigate_incident(
     if not correlation_id:
         correlation_id = generate_correlation_id()
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     try:
         logger.info(
@@ -849,7 +849,7 @@ async def investigate_incident(
             invoke_agent, DEFAULT_LLM_RETRY_CONFIG, correlation_id
         )
 
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         duration_seconds = (end_time - start_time).total_seconds()
 
         logger.info(
@@ -893,7 +893,7 @@ async def investigate_incident(
                     tool_info = {
                         "tool": tool_call.get("name", "unknown"),
                         "args": tool_call.get("args", {}),
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                     tool_calls.append(tool_info)
 
@@ -942,7 +942,7 @@ async def investigate_incident(
         return investigation_result
 
     except Exception as e:
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         duration_seconds = (end_time - start_time).total_seconds()
 
         logger.error(
@@ -1169,7 +1169,7 @@ def extract_evidence(messages: List[Any]) -> List[Dict[str, Any]]:
                         "source": tool_name,
                         "args": tool_args,
                         "content": tool_response or "No response",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 
@@ -1186,7 +1186,7 @@ def extract_evidence(messages: List[Any]) -> List[Dict[str, Any]]:
                     {
                         "source": "agent_analysis",
                         "content": match.group(1).strip(),
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                 )
 

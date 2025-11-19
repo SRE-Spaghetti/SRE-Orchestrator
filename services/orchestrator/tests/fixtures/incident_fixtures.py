@@ -1,7 +1,7 @@
 """Reusable fixtures for incident-related testing."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from typing import Dict, Any, List
 
@@ -20,7 +20,7 @@ def pending_incident() -> Incident:
         id=uuid4(),
         description="Service api-gateway is returning 503 errors",
         status=IncidentStatus.PENDING,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         evidence={},
         extracted_entities={},
         investigation_steps=[],
@@ -40,7 +40,7 @@ def in_progress_incident() -> Incident:
         id=incident_id,
         description="Database connection pool exhausted",
         status=IncidentStatus.IN_PROGRESS,
-        created_at=datetime.utcnow() - timedelta(minutes=5),
+        created_at=datetime.now(timezone.utc) - timedelta(minutes=5),
         evidence={
             "initial_symptoms": ["High connection count", "Slow query responses"]
         },
@@ -48,7 +48,7 @@ def in_progress_incident() -> Incident:
         investigation_steps=[
             InvestigationStep(
                 step_name="get_pod_details",
-                timestamp=datetime.utcnow() - timedelta(minutes=4),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=4),
                 status="completed",
                 details={
                     "tool": "get_pod_details",
@@ -57,7 +57,7 @@ def in_progress_incident() -> Incident:
             ),
             InvestigationStep(
                 step_name="check_database_connections",
-                timestamp=datetime.utcnow() - timedelta(minutes=2),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=2),
                 status="started",
                 details={},
             ),
@@ -77,8 +77,8 @@ def completed_incident() -> Incident:
         id=uuid4(),
         description="Redis cache unavailable",
         status=IncidentStatus.COMPLETED,
-        created_at=datetime.utcnow() - timedelta(hours=1),
-        completed_at=datetime.utcnow() - timedelta(minutes=30),
+        created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        completed_at=datetime.now(timezone.utc) - timedelta(minutes=30),
         evidence={
             "pod_status": "CrashLoopBackOff",
             "error_logs": ["Connection refused on port 6379"],
@@ -94,7 +94,7 @@ def completed_incident() -> Incident:
         investigation_steps=[
             InvestigationStep(
                 step_name="get_pod_details",
-                timestamp=datetime.utcnow() - timedelta(minutes=55),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=55),
                 status="completed",
                 details={
                     "tool": "get_pod_details",
@@ -103,7 +103,7 @@ def completed_incident() -> Incident:
             ),
             InvestigationStep(
                 step_name="get_pod_logs",
-                timestamp=datetime.utcnow() - timedelta(minutes=50),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=50),
                 status="completed",
                 details={
                     "tool": "get_pod_logs",
@@ -112,7 +112,7 @@ def completed_incident() -> Incident:
             ),
             InvestigationStep(
                 step_name="analyze_recent_changes",
-                timestamp=datetime.utcnow() - timedelta(minutes=45),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=45),
                 status="completed",
                 details={
                     "tool": "get_deployment_history",
@@ -135,20 +135,20 @@ def failed_incident() -> Incident:
         id=uuid4(),
         description="Unknown service degradation",
         status=IncidentStatus.FAILED,
-        created_at=datetime.utcnow() - timedelta(minutes=30),
-        completed_at=datetime.utcnow() - timedelta(minutes=10),
+        created_at=datetime.now(timezone.utc) - timedelta(minutes=30),
+        completed_at=datetime.now(timezone.utc) - timedelta(minutes=10),
         evidence={"partial_data": ["Some metrics collected before failure"]},
         extracted_entities={},
         investigation_steps=[
             InvestigationStep(
                 step_name="initial_analysis",
-                timestamp=datetime.utcnow() - timedelta(minutes=25),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=25),
                 status="completed",
                 details={"tool": "get_metrics", "result": {"cpu": "80%"}},
             ),
             InvestigationStep(
                 step_name="deep_analysis",
-                timestamp=datetime.utcnow() - timedelta(minutes=15),
+                timestamp=datetime.now(timezone.utc) - timedelta(minutes=15),
                 status="failed",
                 details={"error": "LLM API timeout"},
             ),
@@ -196,8 +196,8 @@ def incident_with_complex_evidence() -> Incident:
         id=uuid4(),
         description="Multi-service cascade failure",
         status=IncidentStatus.COMPLETED,
-        created_at=datetime.utcnow() - timedelta(hours=2),
-        completed_at=datetime.utcnow() - timedelta(hours=1),
+        created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=1),
         evidence={
             "affected_services": [
                 {"name": "api-gateway", "status": "degraded", "error_rate": 0.15},
@@ -249,7 +249,7 @@ def multiple_incidents() -> List[Incident]:
             id=uuid4(),
             description=f"Incident {i}: Test incident",
             status=status,
-            created_at=datetime.utcnow() - timedelta(minutes=i * 10),
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=i * 10),
         )
         for i, status in enumerate(
             [

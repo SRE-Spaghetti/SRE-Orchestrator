@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Dict, Optional, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from ..models.incidents import Incident, InvestigationStep, IncidentStatus
 from ..core.investigation_agent import create_investigation_agent, investigate_incident
@@ -69,7 +69,7 @@ class IncidentRepository:
             )
             incident.status = IncidentStatus.FAILED
             incident.error_message = str(e)
-            incident.completed_at = datetime.utcnow()
+            incident.completed_at = datetime.now(timezone.utc)
 
             # Add failed investigation step
             incident.investigation_steps.append(
@@ -125,7 +125,7 @@ class IncidentRepository:
             InvestigationStep(
                 step_name="investigation_started",
                 status="started",
-                details={"timestamp": datetime.utcnow().isoformat()},
+                details={"timestamp": datetime.now(timezone.utc).isoformat()},
             )
         )
 
@@ -177,7 +177,7 @@ class IncidentRepository:
             incident.status = IncidentStatus.COMPLETED
             incident.suggested_root_cause = result["root_cause"]
             incident.confidence_score = result["confidence"]
-            incident.completed_at = datetime.utcnow()
+            incident.completed_at = datetime.now(timezone.utc)
 
             # Store evidence from tool calls
             incident.evidence = {
@@ -210,7 +210,7 @@ class IncidentRepository:
             # Investigation failed - preserve partial results
             incident.status = IncidentStatus.FAILED
             incident.error_message = result.get("error", "Unknown error")
-            incident.completed_at = datetime.utcnow()
+            incident.completed_at = datetime.now(timezone.utc)
 
             # Preserve partial investigation results even on failure
             partial_evidence = {}
@@ -299,9 +299,9 @@ class IncidentRepository:
 
             if status == IncidentStatus.FAILED and details and "error" in details:
                 incident.error_message = details["error"]
-                incident.completed_at = datetime.utcnow()
+                incident.completed_at = datetime.now(timezone.utc)
             elif status == IncidentStatus.COMPLETED:
-                incident.completed_at = datetime.utcnow()
+                incident.completed_at = datetime.now(timezone.utc)
 
             logger.info(f"Updated incident {incident_id} status to '{status.value}'")
 

@@ -76,6 +76,7 @@ directory = "htmlcov"
 
 [tool.poetry.group.dev.dependencies]
 pytest-cov = "^7.0.0"
+pytest-mock = "^3.15.1"
 
 [build-system]
 requires = ["poetry-core"]

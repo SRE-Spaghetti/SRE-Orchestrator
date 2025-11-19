@@ -114,11 +114,11 @@ async def read_health():
     - MCP tool availability
     - Agent initialization status
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     health_status = {
         "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {},
     }
 

@@ -455,11 +455,11 @@ def test_get_incident_with_investigation_steps(test_client, mock_repo):
     # Arrange
     incident_id = uuid4()
     from app.models.incidents import InvestigationStep
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     investigation_step = InvestigationStep(
         step_name="get_pod_details",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         status="completed",
         details={"tool": "get_pod_details", "result": {"status": "Running"}},
     )

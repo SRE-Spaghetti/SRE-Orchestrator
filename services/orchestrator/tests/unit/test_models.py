@@ -10,7 +10,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from pydantic import ValidationError
 
@@ -117,8 +117,8 @@ class TestIncident:
     def test_incident_valid_creation_all_fields(self):
         """Test creating incident with all fields populated"""
         incident_id = uuid4()
-        created_at = datetime.utcnow()
-        completed_at = datetime.utcnow()
+        created_at = datetime.now(timezone.utc)
+        completed_at = datetime.now(timezone.utc)
 
         investigation_step = InvestigationStep(
             step_name="analyze_logs",
@@ -250,7 +250,7 @@ class TestIncident:
             "id": str(incident_id),
             "description": "Test incident",
             "status": "completed",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "completed_at": None,
             "evidence": {"result": "success"},
             "extracted_entities": {},
