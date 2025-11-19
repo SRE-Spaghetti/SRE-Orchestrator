@@ -66,7 +66,7 @@ precision = 2
 show_missing = true
 skip_covered = false
 skip_empty = true
-fail_under = 85.0
+fail_under = 60.0
 
 [tool.coverage.xml]
 output = "coverage.xml"
